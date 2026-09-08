@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "tsx --test tests/authService.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "build": "tsc"
   },
   "repository": {
