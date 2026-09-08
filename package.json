@@ -1,0 +1,33 @@
+{
+  "name": "hd-veterinaria-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test tests/authService.test.ts",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Edudev2004/hd-veterinaria-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Edudev2004/hd-veterinaria-backend/issues"
+  },
+  "homepage": "https://github.com/Edudev2004/hd-veterinaria-backend#readme",
+  "dependencies": {
+    "@insforge/sdk": "^1.5.2",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
