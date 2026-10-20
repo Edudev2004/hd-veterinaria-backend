@@ -1,19 +1,18 @@
 package com.vethd.backend.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Role")
+@Table(name = "roles")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class Role {
 
     @Id
@@ -26,15 +25,9 @@ public class Role {
     @Column(length = 200)
     private String description;
 
+    @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-    }
 
 
 }
