@@ -1,6 +1,7 @@
 package com.vethd.backend.DTOs.response;
 
 import lombok.Builder;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,5 +12,7 @@ public record DiagnosisResponse(
         String details,
         String treatment,
         String notes,
+        LocalDate nextSuggestedAppointment,
         LocalDateTime createdAt
-) {}
+) {
+}
