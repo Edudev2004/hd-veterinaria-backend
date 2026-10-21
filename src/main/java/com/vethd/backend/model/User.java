@@ -36,6 +36,8 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
 
+    @Column(columnDefinition = "TEXT")
+    private String photoUrl;
 
     @Builder.Default
     @Column(nullable = false)
