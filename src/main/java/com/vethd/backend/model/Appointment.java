@@ -43,7 +43,7 @@ public class Appointment {
 
     @Builder.Default
     @Column(nullable = false, length = 20)
-    private String status = "PROGRAMADA"; // PROGRAMADA, ATENDIDA, NO_ATENDIDA, CANCELADA[cite: 13]
+    private String status = "PENDIENTE";
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String reason;
