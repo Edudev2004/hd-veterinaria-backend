@@ -1,7 +1,15 @@
 package com.vethd.backend.services;
 
+import com.vethd.backend.DTOs.response.AppointmentResponse;
+import com.vethd.backend.mapper.AppointmentMapper;
 import com.vethd.backend.repository.AppointmentRepository;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class VetScheduleService {
@@ -9,5 +17,15 @@ public class VetScheduleService {
 
     public VetScheduleService(AppointmentRepository appointmentRepository) {
         this.appointmentRepository = appointmentRepository;
+    }
+
+    public List<AppointmentResponse> getAgendaDiaria(UUID veterinarianId, LocalDate fecha) {
+        LocalDateTime desde = LocalDateTime.of(fecha, LocalTime.MIN);
+        LocalDateTime hasta = LocalDateTime.of(fecha, LocalTime.MAX);
+        return appointmentRepository
+                .findByVeterinarian_IdAndScheduledAtBetweenOrderByScheduledAtAsc(veterinarianId, desde, hasta)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 }
