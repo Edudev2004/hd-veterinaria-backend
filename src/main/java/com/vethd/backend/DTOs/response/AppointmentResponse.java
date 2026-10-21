@@ -13,6 +13,7 @@ public record AppointmentResponse(
         LocalDateTime scheduledAt,
         String status,
         String reason,
+        String cancellationReason,
         LocalDateTime createdAt
 ) {
 }
