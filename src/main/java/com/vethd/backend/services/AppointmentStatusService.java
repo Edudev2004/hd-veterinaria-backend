@@ -1,5 +1,6 @@
 package com.vethd.backend.services;
 
+import com.vethd.backend.DTOs.request.AppointmentNotAttendedRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.mapper.AppointmentMapper;
 import com.vethd.backend.model.Appointment;
@@ -33,6 +34,15 @@ public class AppointmentStatusService {
     public AppointmentResponse marcarAtendida(UUID appointmentId, UUID veterinarianId) {
         Appointment appointment = buscarYValidar(appointmentId, veterinarianId);
         appointment.setStatus("ATENDIDA");
+        Appointment guardado = appointmentRepository.save(appointment);
+        return AppointmentMapper.toResponse(guardado);
+    }
+
+    // US-24: marcar cita como no atendida
+    public AppointmentResponse marcarNoAtendida(UUID appointmentId, UUID veterinarianId, AppointmentNotAttendedRequest request) {
+        Appointment appointment = buscarYValidar(appointmentId, veterinarianId);
+        appointment.setStatus("NO_ATENDIDA");
+        appointment.setCancellationReason(request.reason());
         Appointment guardado = appointmentRepository.save(appointment);
         return AppointmentMapper.toResponse(guardado);
     }
