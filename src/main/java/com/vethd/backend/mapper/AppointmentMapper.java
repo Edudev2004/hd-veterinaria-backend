@@ -29,11 +29,11 @@ public class AppointmentMapper {
         appointment.setReason(request.reason());
     }
 
-    public static AppointmentResponse toResponse(Appointment appointment) {
+    public static AppointmentResponse toResponse(Appointment appointment, Double averageRating) {
         return AppointmentResponse.builder()
                 .id(appointment.getId())
                 .pet(PetMapper.toResponse(appointment.getPet()))
-                .veterinarian(VeterinarianMapper.toResponse(appointment.getVeterinarian()))
+                .veterinarian(VeterinarianMapper.toResponse(appointment.getVeterinarian(), averageRating))
                 .scheduledAt(appointment.getScheduledAt())
                 .status(appointment.getStatus())
                 .reason(appointment.getReason())

@@ -9,6 +9,8 @@ public record VeterinarianResponse(
         UUID id,
         String name,
         String specialtyName,
-        String email
+        String email,
+        String photoUrl,
+        Double averageRating
 ) {
 }

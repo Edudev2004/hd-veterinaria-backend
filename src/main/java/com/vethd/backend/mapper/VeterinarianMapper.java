@@ -19,7 +19,7 @@ public class VeterinarianMapper {
         return veterinarian;
     }
 
-    public static VeterinarianResponse toResponse(Veterinarian veterinarian) {
+    public static VeterinarianResponse toResponse(Veterinarian veterinarian, Double averageRating) {
         User user = veterinarian.getUser();
         String specialtyNames = veterinarian.getSpecialties().stream()
                 .map(Specialty::getName)
@@ -30,6 +30,8 @@ public class VeterinarianMapper {
                 .name(user.getFirstName() + " " + user.getLastName())
                 .specialtyName(specialtyNames)
                 .email(user.getEmail())
+                .averageRating(averageRating)
+                .photoUrl(user.getPhotoUrl())
                 .build();
     }
 }
