@@ -8,6 +8,7 @@ import java.util.UUID;
 @Builder
 public record NotificationResponse(
         UUID id,
+        UUID appointmentId,
         String title,
         String message,
         String type,
