@@ -29,14 +29,15 @@ public class AppointmentMapper {
         appointment.setReason(request.reason());
     }
 
-    public static AppointmentResponse toResponse(Appointment appointment, Double averageRating) {
+    public static AppointmentResponse toResponse(Appointment appointment) {
         return AppointmentResponse.builder()
                 .id(appointment.getId())
                 .pet(PetMapper.toResponse(appointment.getPet()))
-                .veterinarian(VeterinarianMapper.toResponse(appointment.getVeterinarian(), averageRating))
+                .veterinarian(VeterinarianMapper.toResponse(appointment.getVeterinarian()))
                 .scheduledAt(appointment.getScheduledAt())
                 .status(appointment.getStatus())
                 .reason(appointment.getReason())
+                .cancellationReason(appointment.getCancellationReason())
                 .createdAt(appointment.getCreatedAt())
                 .build();
     }

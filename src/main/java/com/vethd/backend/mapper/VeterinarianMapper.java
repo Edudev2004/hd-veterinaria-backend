@@ -34,4 +34,8 @@ public class VeterinarianMapper {
                 .photoUrl(user.getPhotoUrl())
                 .build();
     }
+
+    public static VeterinarianResponse toResponse(Veterinarian veterinarian) {
+        return toResponse(veterinarian, null);
+    }
 }
