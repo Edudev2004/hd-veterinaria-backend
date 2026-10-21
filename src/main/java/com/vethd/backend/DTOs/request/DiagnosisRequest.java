@@ -10,5 +10,4 @@ public record DiagnosisRequest(
         String details,
         String treatment,
         String notes
-) {
-}
+) {}
