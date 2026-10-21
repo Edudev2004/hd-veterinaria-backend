@@ -34,7 +34,15 @@ public class VeterinarianServiceImpl implements VeterinarianService {
 
         return veterinarians.stream()
                 .map(vet -> VeterinarianMapper.toResponse(
-                        vet, ratings.getOrDefault(vet.getId(), 0.0))
+                        vet, redondear(ratings.get(vet.getId())))
                 ).toList();
+    }
+
+
+    private Double redondear(Double valor) {
+        if (valor == null) {
+            return 0.0;
+        }
+        return Math.round(valor * 100.0) / 100.0;
     }
 }
