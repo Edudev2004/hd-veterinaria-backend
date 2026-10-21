@@ -1,5 +1,7 @@
 package com.vethd.backend.services;
 
+import com.vethd.backend.DTOs.response.AppointmentResponse;
+import com.vethd.backend.mapper.AppointmentMapper;
 import com.vethd.backend.model.Appointment;
 import com.vethd.backend.repository.AppointmentRepository;
 import org.springframework.http.HttpStatus;
@@ -25,5 +27,13 @@ public class AppointmentStatusService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se puede actualizar citas PENDIENTES");
         }
         return appointment;
+    }
+
+    // US-23: marcar cita como atendida
+    public AppointmentResponse marcarAtendida(UUID appointmentId, UUID veterinarianId) {
+        Appointment appointment = buscarYValidar(appointmentId, veterinarianId);
+        appointment.setStatus("ATENDIDA");
+        Appointment guardado = appointmentRepository.save(appointment);
+        return AppointmentMapper.toResponse(guardado);
     }
 }
