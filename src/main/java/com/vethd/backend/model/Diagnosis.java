@@ -36,6 +36,8 @@ public class Diagnosis {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    private java.time.LocalDate nextSuggestedAppointment;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
