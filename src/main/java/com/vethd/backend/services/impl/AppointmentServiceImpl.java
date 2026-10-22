@@ -1,5 +1,6 @@
 package com.vethd.backend.services.impl;
 
+import com.vethd.backend.DTOs.request.AppointmentCancelRequest;
 import com.vethd.backend.DTOs.request.AppointmentRequest;
 import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
@@ -67,7 +68,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         LocalDateTime scheduledAt = LocalDateTime.of(request.date(), request.hour());
         validateFutureDateTime(scheduledAt);
-        validateSlotIsFree(request.veterinarianId(),scheduledAt,null);
+        validateSlotIsFree(request.veterinarianId(), scheduledAt, null);
 
         Appointment appointment = AppointmentMapper.toEntity(request, pet, veterinarian, specialty);
         Appointment saved = appointmentRepository.save(appointment);
@@ -102,6 +103,28 @@ public class AppointmentServiceImpl implements AppointmentService {
         validateSlotIsFree(targetVeterinarian.getId(), scheduledAt, appointment.getId());
 
         AppointmentMapper.rescheduleEntity(request, appointment, targetVeterinarian);
+        Appointment saved = appointmentRepository.save(appointment);
+        return AppointmentMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @Override
+    public AppointmentResponse cancelAppointment(UUID id, AppointmentCancelRequest request) {
+        UUID currentUserId = currentUserProvider.getCurrentUserId();
+
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+
+        if (!appointment.getPet().getOwner().getUser().getId().equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this appointment");
+        }
+
+        if (!STATUS_PENDING.equals(appointment.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only pending appointments can be cancelled");
+        }
+
+        AppointmentMapper.cancelEntity(appointment, request.cancellationReason());
         Appointment saved = appointmentRepository.save(appointment);
         return AppointmentMapper.toResponse(saved);
     }

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,11 +40,19 @@ public class AppointmentControllerTest {
     private static final String USER_HEADER = "X-User-Id";
     private static final String FUTURE_DATE = "2026-11-15";
     private static final String PAST_DATE = "2026-01-15";
+    private static final String REASON = "limping after walk";
 
     private static final String[] TABLAS = {
             "veterinarian_specialties", "reviews", "appointments", "pets",
             "owners", "veterinarians", "specialties", "users", "roles"
     };
+
+    private Role vetRole;
+    private Role ownerRole;
+    private Specialty cardio;
+    private Veterinarian vet;
+    private Pet pet;
+    private UUID ownerId;
 
     @BeforeEach
     void cleanDatabase() {
@@ -52,25 +61,32 @@ public class AppointmentControllerTest {
         }
     }
 
+    private void setupScenario() {
+        vetRole = createRole("ROLE_VET");
+        ownerRole = createRole("ROLE_OWNER");
+        cardio = createSpecialty("Cardiologia");
+        vet = createVeterinarian(createUser(vetRole, "70000001", "Ana", "Perez", "ana@test.com"), cardio);
+        pet = createPet(ownerRole, "70000002", "dueno@test.com");
+        ownerId = pet.getOwner().getUser().getId();
+        em.flush();
+    }
+
+    // ---------------------------------------------------------------
+    // US-14 - AGENDAR CITA
+    // ---------------------------------------------------------------
+
     @Test
     void shouldCreateAppointmentWithPendingStatus() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "70000001", "Ana", "Perez", "ana1@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "70000002", "dueno1@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(FUTURE_DATE, "10:00")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.status").value("PENDIENTE"))
-                .andExpect(jsonPath("$.reason").value("limping after walk"))
+                .andExpect(jsonPath("$.reason").value(REASON))
                 .andExpect(jsonPath("$.scheduledAt").value(FUTURE_DATE + "T10:00:00"))
                 .andExpect(jsonPath("$.pet.id").value(pet.getId().toString()))
                 .andExpect(jsonPath("$.veterinarian.id").value(vet.getId().toString()));
@@ -78,173 +94,313 @@ public class AppointmentControllerTest {
 
     @Test
     void shouldReturn409WhenSlotIsAlreadyBooked() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "71000001", "Ana", "Perez", "ana2@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "71000002", "dueno2@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
-
+        setupScenario();
         createAppointment(pet, vet, cardio, LocalDateTime.of(2026, 11, 15, 10, 0));
-
         em.flush();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(FUTURE_DATE, "10:00")))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void shouldReturn404WhenPetDoesNotExist() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "72000001", "Ana", "Perez", "ana3@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "72000002", "dueno3@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(UUID.randomUUID(), vet.getId(), cardio.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(UUID.randomUUID(), vet.getId(), cardio.getId(),
+                                FUTURE_DATE, "10:00")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void shouldReturn404WhenVeterinarianDoesNotExist() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        createVeterinarian(createUser(vetRole, "73000001", "Ana", "Perez", "ana4@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "73000002", "dueno4@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), UUID.randomUUID(), cardio.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(pet.getId(), UUID.randomUUID(), cardio.getId(),
+                                FUTURE_DATE, "10:00")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void shouldReturn404WhenSpecialtyDoesNotExist() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "74000001", "Ana", "Perez", "ana5@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "74000002", "dueno5@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), UUID.randomUUID(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(pet.getId(), vet.getId(), UUID.randomUUID(),
+                                FUTURE_DATE, "10:00")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void shouldReturn403WhenPetBelongsToAnotherOwner() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "75000001", "Ana", "Perez", "ana6@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "75000002", "dueno6@test.com");
-        Pet petFromAnotherOwner = createPet(ownerRole, "75000003", "dueno7@test.com");
-        UUID intruderId = petFromAnotherOwner.getOwner().getUser().getId();
+        setupScenario();
+        UUID intruderId = createPet(ownerRole, "70000003", "otro-dueno@test.com")
+                .getOwner().getUser().getId();
+        em.flush();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, intruderId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(FUTURE_DATE, "10:00")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void shouldReturn401WhenUserHeaderIsMissing() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "76000001", "Ana", "Perez", "ana7@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "76000002", "dueno8@test.com");
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(FUTURE_DATE, "10:00")))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void shouldReturn400WhenHourIsOutsideWorkingHours() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "77000001", "Ana", "Perez", "ana8@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "77000002", "dueno9@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), FUTURE_DATE, "07:00")))
+                        .content(appointmentJson(FUTURE_DATE, "07:00")))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), FUTURE_DATE, "18:00")))
+                        .content(appointmentJson(FUTURE_DATE, "18:00")))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void shouldReturn400WhenAppointmentIsInPast() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "78000001", "Ana", "Perez", "ana10@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "78000002", "dueno10@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        setupScenario();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), cardio.getId(), PAST_DATE, "10:00")))
+                        .content(appointmentJson(PAST_DATE, "10:00")))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void shouldReturn400WhenSpecialtyDoesNotBelongToVeterinarian() throws Exception {
-        Role vetRole = createRole("ROLE_VET");
-        Role ownerRole = createRole("ROLE_OWNER");
-        Specialty cardio = createSpecialty("Cardiologia");
+        setupScenario();
         Specialty derma = createSpecialty("Dermatologia");
-
-        Veterinarian vet = createVeterinarian(
-                createUser(vetRole, "79000001", "Ana", "Perez", "ana11@test.com"), cardio);
-        Pet pet = createPet(ownerRole, "79000002", "dueno11@test.com");
-        UUID ownerId = pet.getOwner().getUser().getId();
+        em.flush();
 
         mockMvc.perform(post("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(appointmentJson(pet.getId(), vet.getId(), derma.getId(), FUTURE_DATE, "10:00")))
+                        .content(appointmentJson(pet.getId(), vet.getId(), derma.getId(),
+                                FUTURE_DATE, "10:00")))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ---------------------------------------------------------------
+    // US-15 - REPROGRAMAR CITA
+    // ---------------------------------------------------------------
+
+    @Test
+    void shouldRescheduleAppointmentToNewSlot() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "15:00")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(appointment.getId().toString()))
+                .andExpect(jsonPath("$.scheduledAt").value(FUTURE_DATE + "T15:00:00"))
+                .andExpect(jsonPath("$.status").value("PENDIENTE"));
+    }
+
+    @Test
+    void shouldReturn400WhenNewVeterinarianDoesNotHaveSpecialty() throws Exception {
+        setupScenario();
+        Specialty derma = createSpecialty("Dermatologia");
+        em.flush();
+        Veterinarian newVet = createVeterinarian(
+                createUser(vetRole, "70000011", "Luis", "Soto", "luis@test.com"), derma);
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "15:00", newVet.getId())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldMoveAppointmentToVeterinarianWithSameSpecialty() throws Exception {
+        setupScenario();
+        Veterinarian newVet = createVeterinarian(
+                createUser(vetRole, "70000012", "Luis", "Soto", "luis2@test.com"), cardio);
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "15:00", newVet.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.veterinarian.id").value(newVet.getId().toString()));
+    }
+
+    @Test
+    void shouldRescheduleToSameSlotWithoutConflict() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "10:00")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scheduledAt").value(FUTURE_DATE + "T10:00:00"));
+    }
+
+    @Test
+    void shouldReturn409WhenNewSlotIsAlreadyBooked() throws Exception {
+        setupScenario();
+        createAppointment(pet, vet, cardio, LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointmentToMove = pendingAppointment(LocalDateTime.of(2026, 11, 15, 15, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointmentToMove.getId() + "/reprogramar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "10:00")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldReturn400WhenReschedulingNonPendingAppointment() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        appointment.setStatus("CANCELADA");
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "15:00")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn403WhenReschedulingAnotherOwnersAppointment() throws Exception {
+        setupScenario();
+        UUID intruderId = createPet(ownerRole, "70000004", "otro-dueno2@test.com")
+                .getOwner().getUser().getId();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
+                        .header(USER_HEADER, intruderId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rescheduleJson(FUTURE_DATE, "15:00")))
+                .andExpect(status().isForbidden());
+    }
+
+    // ---------------------------------------------------------------
+    // US-16 - CANCELAR CITA
+    // ---------------------------------------------------------------
+
+    @Test
+    void shouldCancelAppointmentWithReason() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cancelJson("owner is travelling")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(appointment.getId().toString()))
+                .andExpect(jsonPath("$.status").value("CANCELADA"))
+                .andExpect(jsonPath("$.cancellationReason").value("owner is travelling"))
+                .andExpect(jsonPath("$.scheduledAt").value(FUTURE_DATE + "T10:00:00"))
+                .andExpect(jsonPath("$.reason").value(REASON));
+    }
+
+    @Test
+    void shouldReturn400WhenCancellingNonPendingAppointment() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        appointment.setStatus("ATENDIDA");
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cancelJson("no aplica")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenCancellationReasonIsBlank() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cancelJson("   ")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn403WhenCancellingAnotherOwnersAppointment() throws Exception {
+        setupScenario();
+        UUID intruderId = createPet(ownerRole, "70000005", "otro-dueno3@test.com")
+                .getOwner().getUser().getId();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
+                        .header(USER_HEADER, intruderId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cancelJson("motivo ajeno")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldBookSlotAgainAfterCancellation() throws Exception {
+        setupScenario();
+        Appointment first = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(patch("/api/citas/" + first.getId() + "/cancelar")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cancelJson("ya no viene")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(appointmentJson(FUTURE_DATE, "10:00")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDIENTE"));
+    }
+
+    // ---------------------------------------------------------------
+    // HELPERS
+    // ---------------------------------------------------------------
+
+    private Appointment pendingAppointment(LocalDateTime scheduledAt) {
+        Appointment appointment = createAppointment(pet, vet, cardio, scheduledAt);
+        em.flush();
+        return appointment;
+    }
+
+    private String appointmentJson(String date, String hour) {
+        return appointmentJson(pet.getId(), vet.getId(), cardio.getId(), date, hour);
     }
 
     private String appointmentJson(UUID petId, UUID veterinarianId, UUID specialtyId,
@@ -256,9 +412,36 @@ public class AppointmentControllerTest {
                   "specialtyId": "%s",
                   "date": "%s",
                   "hour": "%s",
-                  "reason": "limping after walk"
+                  "reason": "%s"
                 }
-                """.formatted(petId, veterinarianId, specialtyId, date, hour);
+                """.formatted(petId, veterinarianId, specialtyId, date, hour, REASON);
+    }
+
+    private String rescheduleJson(String date, String hour) {
+        return """
+                {
+                  "newDate": "%s",
+                  "newHour": "%s"
+                }
+                """.formatted(date, hour);
+    }
+
+    private String rescheduleJson(String date, String hour, UUID newVeterinarianId) {
+        return """
+                {
+                  "newDate": "%s",
+                  "newHour": "%s",
+                  "newVeterinarianId": "%s"
+                }
+                """.formatted(date, hour, newVeterinarianId);
+    }
+
+    private String cancelJson(String cancellationReason) {
+        return """
+                {
+                  "cancellationReason": "%s"
+                }
+                """.formatted(cancellationReason);
     }
 
     private Role createRole(String name) {
@@ -315,7 +498,7 @@ public class AppointmentControllerTest {
                 .veterinarian(vet)
                 .specialty(specialty)
                 .scheduledAt(scheduledAt)
-                .reason("consulta general")
+                .reason(REASON)
                 .build();
         em.persist(appointment);
         return appointment;

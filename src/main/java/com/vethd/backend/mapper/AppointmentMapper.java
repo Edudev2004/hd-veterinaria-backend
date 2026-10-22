@@ -30,6 +30,11 @@ public class AppointmentMapper {
         appointment.setScheduledAt(LocalDateTime.of(request.newDate(), request.newHour()));
     }
 
+    public static void cancelEntity(Appointment appointment, String cancellationReason) {
+        appointment.setStatus("CANCELADA");
+        appointment.setCancellationReason(cancellationReason);
+    }
+
 
     public static AppointmentResponse toResponse(Appointment appointment) {
         return AppointmentResponse.builder()

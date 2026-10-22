@@ -6,8 +6,6 @@ import lombok.Builder;
 @Builder
 public record AppointmentCancelRequest(
         @NotBlank(message = "Cancellation reason is required")
-        String cancellationReason,
-
-        String reasonCategory
+        String cancellationReason
 ) {
 }
