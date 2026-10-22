@@ -35,8 +35,11 @@ public class AppointmentMapper {
         appointment.setCancellationReason(cancellationReason);
     }
 
-
     public static AppointmentResponse toResponse(Appointment appointment) {
+        return toResponse(appointment, null);
+    }
+
+    public static AppointmentResponse toResponse(Appointment appointment, Diagnosis diagnosis) {
         return AppointmentResponse.builder()
                 .id(appointment.getId())
                 .pet(PetMapper.toResponse(appointment.getPet()))
@@ -46,6 +49,7 @@ public class AppointmentMapper {
                 .reason(appointment.getReason())
                 .cancellationReason(appointment.getCancellationReason())
                 .createdAt(appointment.getCreatedAt())
+                .diagnosis(diagnosis != null ? DiagnosisMapper.toResponse(diagnosis) : null)
                 .build();
     }
 }
