@@ -15,6 +15,8 @@ import java.util.UUID;
 @Repository
 public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID> {
 
+    Optional<Veterinarian> findByUserId(UUID userId);
+
     @Query("""
             SELECT DISTINCT v FROM Veterinarian v
             JOIN FETCH v.user

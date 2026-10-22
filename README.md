@@ -131,6 +131,55 @@ src/main/java/com/veterinariahd/backend/
 
 ---
 
-## 📄 9. Licencia
+## 🔐 9. Estrategia de Autenticación, JWT y Cierre de Sesión (Logout)
+
+### Generación de Tokens
+- Al invocar `POST /api/auth/register` o `POST /api/auth/login`, el backend valida las credenciales contra la base de datos (utilizando **BCrypt**) y genera un token JWT firmado mediante algoritmo HMAC-SHA (mínimo 256 bits).
+- El JWT incluye en sus claims: `userId`, `correo`/`email`, `rol`/`role` y tiempo de expiración (24 horas).
+
+### Invalidación de Token (Logout Blacklist)
+- **Endpoint:** `POST /api/auth/logout`.
+- **Mecanismo:** El token enviado en el header `Authorization: Bearer <token>` (o en el cuerpo `{ "token": "..." }`) es registrado de manera inmediata en la lista negra (`blacklistedTokens`).
+- **Comportamiento:**
+  - Cualquier petición subsiguiente con un token invalidado es rechazada con código **HTTP 401 Unauthorized**.
+  - Si se intenta llamar al endpoint `/logout` con un token ya invalidado o malformado, el sistema responde **HTTP 401**.
+  - Los tokens en lista negra se limpian automáticamente conforme expira su tiempo de validez natural (`pruneExpiredBlacklistedTokens`), evitando sobrecarga de memoria.
+
+### Filtro Spring Security y Autorización por Rol (RBAC)
+- **Filtro (`JwtAuthenticationFilter`):** Intercepta cada solicitud HTTP inspeccionando el header `Authorization: Bearer <token>`.
+- **Validación Automática:** Comprueba firma criptográfica HMAC-SHA, expiración y verifica contra la lista negra en memoria antes de permitir el acceso.
+- **Roles y Permisos:**
+  - `PROPIETARIO` (compatible con `ROLE_OWNER`): Gestión de citas propias, mascotas y valoraciones (`POST /api/citas/*/valoracion`).
+  - `VETERINARIO` (compatible con `ROLE_VET`): Consulta de agenda médica (`GET /api/veterinarios/me/agenda`), atención de citas (`PATCH /api/citas/*/atendida`) y emisión de diagnósticos (`POST /api/citas/*/consulta`).
+  - `ADMIN`: Acceso a operaciones privilegiadas (`/api/admin/**`) y supervisión global del sistema.
+- **Manejo Estandarizado de Respuestas:**
+  - **HTTP 401 Unauthorized (`JwtAuthenticationEntryPoint`):** Retornado en formato JSON cuando falta el token, es inválido, está expirado o revocado.
+  - **HTTP 403 Forbidden (`JwtAccessDeniedHandler`):** Retornado en formato JSON cuando el rol autenticado no posee los permisos requeridos por el recurso.
+- **Endpoints Públicos (sin requerir token):**
+  - `/api/auth/**` (registro, login, logout, recuperación y reset de contraseña).
+  - `/api/especialidades/**` (catálogo activo de especialidades).
+  - `/api/veterinarios/**` (listado público de veterinarios, disponibilidad y valoraciones públicas, excluyendo `/api/veterinarios/me/**`).
+
+### Recuperación y Restablecimiento de Contraseña (US-05)
+- **Solicitud de Recuperación:**
+  - **Endpoint:** `POST /api/auth/recuperar-password`.
+  - **Payload:** `{ "correo": "usuario@ejemplo.com" }` (o `{ "email": "..." }`).
+  - **Comportamiento:** Si el correo existe en la base de datos, genera un token temporal con vigencia estricta de **30 minutos** persistido en la tabla `password_reset_tokens`.
+  - **Simulación de Correo (Log):** Conforme al criterio de aceptación, el sistema emite el enlace en los logs:
+    `[PASSWORD_RESET] Correo simulado a usuario@ejemplo.com: Para restablecer su contraseña use el enlace: https://vethd.com/reset-password?token=...`
+  - **Respuesta:** HTTP 200 OK (`{"message": "Se ha enviado un enlace de recuperación a su correo electrónico", "token": "..."}`).
+- **Restablecimiento de Contraseña:**
+  - **Endpoint:** `POST /api/auth/reset-password`.
+  - **Payload:** `{ "token": "...", "nuevaPassword": "NuevaPassword123!" }`.
+  - **Validaciones:**
+    - Token inexistente o vacío: HTTP 400 Bad Request.
+    - Token expirado (> 30 minutos): HTTP 400 Bad Request.
+    - Token ya utilizado: HTTP 400 Bad Request.
+    - Contraseña con menos de 8 caracteres: HTTP 400 Bad Request.
+  - **Resultado:** Actualiza el hash de la contraseña con BCrypt, invalida el token (`used = true`) y permite el inicio de sesión inmediato con la nueva clave.
+
+---
+
+## 📄 10. Licencia
 
 Desarrollado para el curso de **Herramientas de Desarrollo (HD)** &copy; 2026.

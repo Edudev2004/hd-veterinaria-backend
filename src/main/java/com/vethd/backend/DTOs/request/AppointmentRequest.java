@@ -1,11 +1,11 @@
 package com.vethd.backend.DTOs.request;
 
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Builder
@@ -19,9 +19,11 @@ public record AppointmentRequest(
         @NotNull(message = "Specialty ID is required")
         UUID specialtyId,
 
-        @NotNull(message = "Scheduled date and time are required")
-        @Future(message = "Scheduled date must be in the future")
-        LocalDateTime scheduledAt,
+        @NotNull(message = "Date is required")
+        LocalDate date,
+
+        @NotNull(message = "Time is required")
+        LocalTime hour,
 
         @NotBlank(message = "Reason is required")
         String reason

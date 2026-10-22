@@ -65,6 +65,8 @@ public class VeterinarianAdminServiceImpl implements VeterinarianAdminService {
         }
 
         Role vetRole = roleRepository.findByNameIgnoreCase("VET")
+                .or(() -> roleRepository.findByNameIgnoreCase("VETERINARIO"))
+                .or(() -> roleRepository.findByNameIgnoreCase("ROLE_VETERINARIO"))
                 .or(() -> roleRepository.findByNameIgnoreCase("VETERINARIAN"))
                 .or(() -> roleRepository.findByNameIgnoreCase("ROLE_VET"))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Rol veterinario no configurado"));
