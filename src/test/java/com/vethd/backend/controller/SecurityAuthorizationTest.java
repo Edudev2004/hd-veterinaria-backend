@@ -254,4 +254,21 @@ public class SecurityAuthorizationTest {
                         .header("Authorization", "Bearer " + vetToken))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("Usuario anónimo sin token no puede acceder a /api/propietarios/me (HTTP 401)")
+    void anonymous_AccessingOwnerProfile_Returns401() throws Exception {
+        mockMvc.perform(get("/api/propietarios/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Usuario con rol VETERINARIO no puede acceder a /api/propietarios/me (HTTP 403)")
+    void veterinario_AccessingOwnerProfile_Returns403() throws Exception {
+        String vetToken = jwtService.generateToken(UUID.randomUUID(), "vet@vethd.com", "VETERINARIO");
+
+        mockMvc.perform(get("/api/propietarios/me")
+                        .header("Authorization", "Bearer " + vetToken))
+                .andExpect(status().isForbidden());
+    }
 }

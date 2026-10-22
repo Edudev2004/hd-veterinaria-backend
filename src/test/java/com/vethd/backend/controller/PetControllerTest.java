@@ -2,6 +2,9 @@ package com.vethd.backend.controller;
 
 import com.vethd.backend.DTOs.response.PetResponse;
 import com.vethd.backend.services.PetService;
+import com.vethd.backend.model.Owner;
+import com.vethd.backend.repository.OwnerRepository;
+import com.vethd.backend.services.CurrentUserProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -33,12 +37,20 @@ class PetControllerTest {
 
     private static final UUID PROPIETARIO_DEMO_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID USER_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     private static final String BODY_VALIDO =
             "{\"name\":\"Firulais\",\"species\":\"perro\",\"breed\":\"Labrador\",\"gender\":\"macho\",\"birthDate\":\"2024-03-15\"}";
 
     @Mock
     private PetService petService;
+
+    @Mock
+    private OwnerRepository ownerRepository;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
 
     @InjectMocks
     private PetController petController;
@@ -48,6 +60,11 @@ class PetControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(petController).build();
+    }
+
+    private void mockCurrentOwner() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
+        when(ownerRepository.findByUserId(USER_ID)).thenReturn(Optional.of(Owner.builder().id(PROPIETARIO_DEMO_ID).build()));
     }
 
     private PetResponse buildResponse(UUID id, String name) {
@@ -62,6 +79,7 @@ class PetControllerTest {
 
     @Test
     void postRegistraLaMascotaYDevuelve201ConSuId() throws Exception {
+        mockCurrentOwner();
         UUID id = UUID.randomUUID();
         when(petService.register(eq(PROPIETARIO_DEMO_ID), any())).thenReturn(buildResponse(id, "Firulais"));
 
@@ -85,6 +103,7 @@ class PetControllerTest {
 
     @Test
     void getListaLasMascotasDelPropietario() throws Exception {
+        mockCurrentOwner();
         when(petService.listByOwner(PROPIETARIO_DEMO_ID))
                 .thenReturn(List.of(buildResponse(UUID.randomUUID(), "Luna"), buildResponse(UUID.randomUUID(), "Max")));
 
@@ -95,7 +114,17 @@ class PetControllerTest {
     }
 
     @Test
+    void getDevuelve404SiElUsuarioNoTienePerfilDePropietario() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
+        when(ownerRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/mascotas"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void putActualizaLaMascota() throws Exception {
+        mockCurrentOwner();
         UUID id = UUID.randomUUID();
         when(petService.update(eq(PROPIETARIO_DEMO_ID), eq(id), any())).thenReturn(buildResponse(id, "Firulais"));
 
@@ -108,6 +137,7 @@ class PetControllerTest {
 
     @Test
     void putDevuelve403SiLaMascotaNoEsDelPropietario() throws Exception {
+        mockCurrentOwner();
         UUID id = UUID.randomUUID();
         when(petService.update(eq(PROPIETARIO_DEMO_ID), eq(id), any()))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para editar esta mascota"));
@@ -120,6 +150,7 @@ class PetControllerTest {
 
     @Test
     void putDevuelve404SiLaMascotaNoExiste() throws Exception {
+        mockCurrentOwner();
         UUID id = UUID.randomUUID();
         when(petService.update(eq(PROPIETARIO_DEMO_ID), eq(id), any()))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Mascota no encontrada"));
