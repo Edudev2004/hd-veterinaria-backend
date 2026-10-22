@@ -461,7 +461,6 @@ public class SecurityAuthorizationTest {
                 .andExpect(status().isForbidden());
     }
 
-    @Test
     @DisplayName("US-29 veterinario no puede cambiar estado")
     void specialtiesAdmin_VetCannotChangeStatus_Returns403()
             throws Exception {
@@ -476,14 +475,14 @@ public class SecurityAuthorizationTest {
 
         mockMvc.perform(
                 patch("/api/admin/especialidades/" + id + "/estado")
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "active": false
-                    }
-                    """))
-                .andExpect(status().isForbidden());
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "active": false
+                                }
+                                """)
+        ).andExpect(status().isForbidden());
     }
 
     @Test
@@ -497,10 +496,40 @@ public class SecurityAuthorizationTest {
                 "ADMIN"
         );
 
-        mockMvc.perform(get("/api/admin/especialidades")
-                .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+        mockMvc.perform(
+                get("/api/admin/especialidades")
+                        .header("Authorization", "Bearer " + token)
+        ).andExpect(status().isOk());
+    }
+
+    // ==========================================
+    // PRUEBAS INCORPORADAS DESDE DEVELOP
+    // ==========================================
+
+    @Test
+    @DisplayName("Usuario anonimo sin token no puede acceder a propietarios/me")
+    void anonymous_AccessingOwnerProfile_Returns401()
+            throws Exception {
+
+        mockMvc.perform(
+                get("/api/propietarios/me")
+        ).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("VETERINARIO no puede acceder a propietarios/me")
+    void veterinario_AccessingOwnerProfile_Returns403()
+            throws Exception {
+
+        String vetToken = jwtService.generateToken(
+                UUID.randomUUID(),
+                "vet@vethd.com",
+                "VETERINARIO"
+        );
+
+        mockMvc.perform(
+                get("/api/propietarios/me")
+                        .header("Authorization", "Bearer " + vetToken)
+        ).andExpect(status().isForbidden());
     }
 }
-
-

@@ -5,6 +5,7 @@ import com.vethd.backend.model.Specialty;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SpecialtyRepository
@@ -13,14 +14,15 @@ public interface SpecialtyRepository
     // Listar especialidades activas
     List<Specialty> findByActiveTrue();
 
-    // Comprobar si existe una especialidad
-    // con el mismo nombre
+    // US-29: Validar duplicados al crear
     boolean existsByNameIgnoreCase(String name);
 
-    // Comprobar duplicados al editar,
-    // excluyendo la misma especialidad
+    // US-29: Validar duplicados al editar
     boolean existsByNameIgnoreCaseAndIdNot(
             String name,
             UUID id
     );
+
+    // develop: Buscar especialidad por nombre
+    Optional<Specialty> findByNameIgnoreCase(String name);
 }
