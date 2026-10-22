@@ -10,6 +10,7 @@ public record AppointmentResponse(
         UUID id,
         PetResponse pet,
         VeterinarianResponse veterinarian,
+        SpecialtyResponse specialty,
         LocalDateTime scheduledAt,
         String status,
         String reason,
