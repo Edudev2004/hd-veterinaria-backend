@@ -131,6 +131,22 @@ src/main/java/com/veterinariahd/backend/
 
 ---
 
-## 📄 9. Licencia
+## 🔐 9. Estrategia de Autenticación, JWT y Cierre de Sesión (Logout)
+
+### Generación de Tokens
+- Al invocar `POST /api/auth/register` o `POST /api/auth/login`, el backend valida las credenciales contra la base de datos (utilizando **BCrypt**) y genera un token JWT firmado mediante algoritmo HMAC-SHA (mínimo 256 bits).
+- El JWT incluye en sus claims: `userId`, `correo`/`email`, `rol`/`role` y tiempo de expiración (24 horas).
+
+### Invalidación de Token (Logout Blacklist)
+- **Endpoint:** `POST /api/auth/logout`.
+- **Mecanismo:** El token enviado en el header `Authorization: Bearer <token>` (o en el cuerpo `{ "token": "..." }`) es registrado de manera inmediata en la lista negra (`blacklistedTokens`).
+- **Comportamiento:**
+  - Cualquier petición subsiguiente con un token invalidado es rechazada con código **HTTP 401 Unauthorized**.
+  - Si se intenta llamar al endpoint `/logout` con un token ya invalidado o malformado, el sistema responde **HTTP 401**.
+  - Los tokens en lista negra se limpian automáticamente conforme expira su tiempo de validez natural (`pruneExpiredBlacklistedTokens`), evitando sobrecarga de memoria.
+
+---
+
+## 📄 10. Licencia
 
 Desarrollado para el curso de **Herramientas de Desarrollo (HD)** &copy; 2026.
