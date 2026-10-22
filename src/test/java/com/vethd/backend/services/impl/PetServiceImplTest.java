@@ -8,6 +8,7 @@ import com.vethd.backend.repository.OwnerRepository;
 import com.vethd.backend.repository.PetRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -63,6 +64,10 @@ class PetServiceImplTest {
         when(petRepository.saveAndFlush(any(Pet.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PetResponse response = petService.register(ownerId, buildRequest("Firulais"));
+
+        ArgumentCaptor<Pet> guardada = ArgumentCaptor.forClass(Pet.class);
+        verify(petRepository).saveAndFlush(guardada.capture());
+        assertThat(guardada.getValue().getOwner()).isSameAs(owner);
 
         assertThat(response.name()).isEqualTo("Firulais");
         assertThat(response.species()).isEqualTo("perro");
