@@ -26,3 +26,7 @@ supabase:
   url: https://test.supabase.co
   key: test_key
   bucket: test-bucket
+
+app:
+  seed: false
+

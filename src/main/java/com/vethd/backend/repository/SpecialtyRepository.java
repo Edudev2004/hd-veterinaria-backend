@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface SpecialtyRepository extends JpaRepository<Specialty, UUID> {
     List<Specialty> findByActiveTrue();
+    java.util.Optional<Specialty> findByNameIgnoreCase(String name);
 }
