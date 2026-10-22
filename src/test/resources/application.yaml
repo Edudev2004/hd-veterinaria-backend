@@ -17,3 +17,12 @@ spring:
 jwt:
   secret: vethd_default_secret_key_at_least_256_bits_long_for_security_2026!
   expiration: 86400000
+
+resend:
+  api-key: test_api_key
+  from: VetHD <test@vethd.com>
+
+supabase:
+  url: https://test.supabase.co
+  key: test_key
+  bucket: test-bucket

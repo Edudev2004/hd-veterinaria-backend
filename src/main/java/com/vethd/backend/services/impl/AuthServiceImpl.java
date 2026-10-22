@@ -14,6 +14,7 @@ import com.vethd.backend.repository.PasswordResetTokenRepository;
 import com.vethd.backend.repository.RoleRepository;
 import com.vethd.backend.repository.UserRepository;
 import com.vethd.backend.services.AuthService;
+import com.vethd.backend.services.EmailService;
 import com.vethd.backend.services.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     @Transactional
     @Override
@@ -261,8 +263,8 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        // Simulación de envío de correo en los logs conforme al criterio de aceptación
-        log.info("[PASSWORD_RESET] Correo simulado a {}: Para restablecer su contraseña use el enlace: https://vethd.com/reset-password?token={} (Token válido por 30 minutos)", normalizedEmail, token);
+        // Envío de correo mediante Resend API
+        emailService.sendPasswordResetEmail(normalizedEmail, token);
 
         return token;
     }

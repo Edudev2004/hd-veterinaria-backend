@@ -49,6 +49,9 @@ public class AuthServiceImplTest {
     @Mock
     private com.vethd.backend.repository.PasswordResetTokenRepository passwordResetTokenRepository;
 
+    @Mock
+    private com.vethd.backend.services.EmailService emailService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -456,6 +459,7 @@ public class AuthServiceImplTest {
         assertNotNull(token);
         assertFalse(token.isBlank());
         verify(passwordResetTokenRepository).save(any(com.vethd.backend.model.PasswordResetToken.class));
+        verify(emailService).sendPasswordResetEmail(eq("usuario@vethd.com"), eq(token));
     }
 
     @Test
