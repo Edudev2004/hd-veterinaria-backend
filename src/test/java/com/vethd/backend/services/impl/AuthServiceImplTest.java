@@ -1,5 +1,6 @@
 package com.vethd.backend.services.impl;
 
+import com.vethd.backend.DTOs.request.LoginRequest;
 import com.vethd.backend.DTOs.request.RegisterRequest;
 import com.vethd.backend.DTOs.response.AuthResponse;
 import com.vethd.backend.model.Owner;
@@ -58,6 +59,10 @@ public class AuthServiceImplTest {
                 .description("Rol de propietario")
                 .build();
     }
+
+    // ==========================================
+    // US-01: Registro de propietario tests
+    // ==========================================
 
     @Test
     void shouldRegisterOwnerSuccessfully() {
@@ -212,5 +217,174 @@ public class AuthServiceImplTest {
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         assertTrue(ex.getReason().contains("DNI ya se encuentra registrado"));
         verify(userRepository, never()).save(any());
+    }
+
+    // ==========================================
+    // US-02: Inicio de sesión y JWT tests
+    // ==========================================
+
+    @Test
+    void shouldLoginSuccessfully() {
+        UUID userId = UUID.randomUUID();
+        User existingUser = User.builder()
+                .id(userId)
+                .dni("12345678")
+                .firstName("Pedro")
+                .lastName("Navarro")
+                .email("pedro@example.com")
+                .passwordHash("$2a$10$hashedPassword")
+                .role(ownerRole)
+                .active(true)
+                .build();
+
+        UUID ownerId = UUID.randomUUID();
+        Owner owner = Owner.builder()
+                .id(ownerId)
+                .user(existingUser)
+                .phone("987654321")
+                .address("Calle Sol 456")
+                .build();
+
+        LoginRequest request = LoginRequest.builder()
+                .email("pedro@example.com")
+                .password("password123")
+                .build();
+
+        when(userRepository.findByEmail("pedro@example.com")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("password123", "$2a$10$hashedPassword")).thenReturn(true);
+        when(ownerRepository.findByUserId(userId)).thenReturn(Optional.of(owner));
+        when(jwtService.generateToken(userId, "pedro@example.com", "ROLE_OWNER")).thenReturn("valid-jwt-token");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("valid-jwt-token", response.token());
+        assertEquals("pedro@example.com", response.email());
+        assertEquals("Pedro Navarro", response.nombre());
+        assertEquals("propietario", response.rol());
+        assertEquals(userId, response.id());
+        assertEquals(ownerId, response.propietarioId());
+        assertEquals("987654321", response.telefono());
+        assertTrue(response.activo());
+    }
+
+    @Test
+    void shouldThrowUnauthorizedWhenUserNotFound() {
+        LoginRequest request = LoginRequest.builder()
+                .email("unknown@example.com")
+                .password("password123")
+                .build();
+
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.login(request)
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Credenciales incorrectas"));
+    }
+
+    @Test
+    void shouldThrowUnauthorizedWhenPasswordDoesNotMatch() {
+        User existingUser = User.builder()
+                .id(UUID.randomUUID())
+                .email("pedro@example.com")
+                .passwordHash("$2a$10$hashedPassword")
+                .role(ownerRole)
+                .active(true)
+                .build();
+
+        LoginRequest request = LoginRequest.builder()
+                .email("pedro@example.com")
+                .password("wrongPassword")
+                .build();
+
+        when(userRepository.findByEmail("pedro@example.com")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("wrongPassword", "$2a$10$hashedPassword")).thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.login(request)
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Credenciales incorrectas"));
+    }
+
+    @Test
+    void shouldThrowForbiddenWhenAccountIsInactive() {
+        User inactiveUser = User.builder()
+                .id(UUID.randomUUID())
+                .email("inactive@example.com")
+                .passwordHash("$2a$10$hashedPassword")
+                .role(ownerRole)
+                .active(false)
+                .build();
+
+        LoginRequest request = LoginRequest.builder()
+                .email("inactive@example.com")
+                .password("password123")
+                .build();
+
+        when(userRepository.findByEmail("inactive@example.com")).thenReturn(Optional.of(inactiveUser));
+        when(passwordEncoder.matches("password123", "$2a$10$hashedPassword")).thenReturn(true);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.login(request)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("desactivada"));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenLoginEmailOrPasswordMissing() {
+        LoginRequest requestNoEmail = LoginRequest.builder()
+                .password("password123")
+                .build();
+
+        ResponseStatusException ex1 = assertThrows(ResponseStatusException.class, () ->
+                authService.login(requestNoEmail)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex1.getStatusCode());
+
+        LoginRequest requestNoPassword = LoginRequest.builder()
+                .email("test@example.com")
+                .build();
+
+        ResponseStatusException ex2 = assertThrows(ResponseStatusException.class, () ->
+                authService.login(requestNoPassword)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex2.getStatusCode());
+    }
+
+    @Test
+    void shouldLoginWithSpanishFieldsCorreoAndContrasena() {
+        UUID userId = UUID.randomUUID();
+        User existingUser = User.builder()
+                .id(userId)
+                .firstName("Rosa")
+                .lastName("Flores")
+                .email("rosa@example.com")
+                .passwordHash("$2a$10$hashedPassword")
+                .role(ownerRole)
+                .active(true)
+                .build();
+
+        LoginRequest request = LoginRequest.builder()
+                .correo("rosa@example.com")
+                .contrasena("password123")
+                .build();
+
+        when(userRepository.findByEmail("rosa@example.com")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("password123", "$2a$10$hashedPassword")).thenReturn(true);
+        when(ownerRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(jwtService.generateToken(userId, "rosa@example.com", "ROLE_OWNER")).thenReturn("jwt-token-rosa");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("jwt-token-rosa", response.token());
+        assertEquals("rosa@example.com", response.email());
     }
 }

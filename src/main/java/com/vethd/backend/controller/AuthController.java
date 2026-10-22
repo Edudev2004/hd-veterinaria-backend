@@ -1,5 +1,6 @@
 package com.vethd.backend.controller;
 
+import com.vethd.backend.DTOs.request.LoginRequest;
 import com.vethd.backend.DTOs.request.RegisterRequest;
 import com.vethd.backend.DTOs.response.AuthResponse;
 import com.vethd.backend.services.AuthService;
@@ -22,5 +23,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerOwner(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }
