@@ -60,7 +60,7 @@ class PetServiceImplTest {
         UUID ownerId = UUID.randomUUID();
         Owner owner = Owner.builder().id(ownerId).build();
         when(ownerRepository.findById(ownerId)).thenReturn(Optional.of(owner));
-        when(petRepository.save(any(Pet.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(petRepository.saveAndFlush(any(Pet.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PetResponse response = petService.register(ownerId, buildRequest("Firulais"));
 
@@ -78,7 +78,7 @@ class PetServiceImplTest {
         assertThatThrownBy(() -> petService.register(ownerId, buildRequest("Firulais")))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode().value()).isEqualTo(404));
-        verify(petRepository, never()).save(any());
+        verify(petRepository, never()).saveAndFlush(any());
     }
 
     @Test

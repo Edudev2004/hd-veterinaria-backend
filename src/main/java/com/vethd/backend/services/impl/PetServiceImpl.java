@@ -30,7 +30,7 @@ public class PetServiceImpl implements PetService {
         Owner owner = ownerRepository.findById(ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Propietario no encontrado"));
 
-        Pet saved = petRepository.save(PetMapper.toEntity(request, owner));
+        Pet saved = petRepository.saveAndFlush(PetMapper.toEntity(request, owner));
         return PetMapper.toResponse(saved);
     }
 
