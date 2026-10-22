@@ -32,3 +32,8 @@ build/
 .vscode/
 
 .agents
+
+# Environment variables
+.env
+.env.local
+.env.*.local
