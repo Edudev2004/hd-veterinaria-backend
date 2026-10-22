@@ -156,9 +156,27 @@ src/main/java/com/veterinariahd/backend/
   - **HTTP 401 Unauthorized (`JwtAuthenticationEntryPoint`):** Retornado en formato JSON cuando falta el token, es inválido, está expirado o revocado.
   - **HTTP 403 Forbidden (`JwtAccessDeniedHandler`):** Retornado en formato JSON cuando el rol autenticado no posee los permisos requeridos por el recurso.
 - **Endpoints Públicos (sin requerir token):**
-  - `/api/auth/**` (registro, login, logout).
+  - `/api/auth/**` (registro, login, logout, recuperación y reset de contraseña).
   - `/api/especialidades/**` (catálogo activo de especialidades).
   - `/api/veterinarios/**` (listado público de veterinarios, disponibilidad y valoraciones públicas, excluyendo `/api/veterinarios/me/**`).
+
+### Recuperación y Restablecimiento de Contraseña (US-05)
+- **Solicitud de Recuperación:**
+  - **Endpoint:** `POST /api/auth/recuperar-password`.
+  - **Payload:** `{ "correo": "usuario@ejemplo.com" }` (o `{ "email": "..." }`).
+  - **Comportamiento:** Si el correo existe en la base de datos, genera un token temporal con vigencia estricta de **30 minutos** persistido en la tabla `password_reset_tokens`.
+  - **Simulación de Correo (Log):** Conforme al criterio de aceptación, el sistema emite el enlace en los logs:
+    `[PASSWORD_RESET] Correo simulado a usuario@ejemplo.com: Para restablecer su contraseña use el enlace: https://vethd.com/reset-password?token=...`
+  - **Respuesta:** HTTP 200 OK (`{"message": "Se ha enviado un enlace de recuperación a su correo electrónico", "token": "..."}`).
+- **Restablecimiento de Contraseña:**
+  - **Endpoint:** `POST /api/auth/reset-password`.
+  - **Payload:** `{ "token": "...", "nuevaPassword": "NuevaPassword123!" }`.
+  - **Validaciones:**
+    - Token inexistente o vacío: HTTP 400 Bad Request.
+    - Token expirado (> 30 minutos): HTTP 400 Bad Request.
+    - Token ya utilizado: HTTP 400 Bad Request.
+    - Contraseña con menos de 8 caracteres: HTTP 400 Bad Request.
+  - **Resultado:** Actualiza el hash de la contraseña con BCrypt, invalida el token (`used = true`) y permite el inicio de sesión inmediato con la nueva clave.
 
 ---
 
