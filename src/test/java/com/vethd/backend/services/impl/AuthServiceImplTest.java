@@ -387,4 +387,45 @@ public class AuthServiceImplTest {
         assertEquals("jwt-token-rosa", response.token());
         assertEquals("rosa@example.com", response.email());
     }
+
+    // ==========================================
+    // US-03: Cierre de sesión (Logout & Invalidación)
+    // ==========================================
+
+    @Test
+    void shouldLogoutSuccessfullyWithValidToken() {
+        String token = "valid-token-to-logout";
+        when(jwtService.isTokenValid("valid-token-to-logout")).thenReturn(true);
+
+        assertDoesNotThrow(() -> authService.logout("Bearer " + token));
+        verify(jwtService).invalidateToken("valid-token-to-logout");
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenLogoutTokenIsMissingOrBlank() {
+        ResponseStatusException ex1 = assertThrows(ResponseStatusException.class, () ->
+                authService.logout(null)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex1.getStatusCode());
+
+        ResponseStatusException ex2 = assertThrows(ResponseStatusException.class, () ->
+                authService.logout("   ")
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex2.getStatusCode());
+
+        verify(jwtService, never()).invalidateToken(any());
+    }
+
+    @Test
+    void shouldThrowUnauthorizedWhenLogoutTokenIsInvalidOrAlreadyRevoked() {
+        when(jwtService.isTokenValid("invalid-or-revoked-token")).thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.logout("invalid-or-revoked-token")
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Token inválido, expirado o ya revocado"));
+        verify(jwtService, never()).invalidateToken(any());
+    }
 }
