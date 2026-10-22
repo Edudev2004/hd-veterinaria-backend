@@ -5,6 +5,8 @@ import com.vethd.backend.DTOs.request.AppointmentUpdateRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.model.*;
 
+import java.time.LocalDateTime;
+
 public class AppointmentMapper {
 
     private AppointmentMapper() {
@@ -17,8 +19,9 @@ public class AppointmentMapper {
         appointment.setPet(pet);
         appointment.setVeterinarian(veterinarian);
         appointment.setSpecialty(specialty);
-        appointment.setScheduledAt(request.scheduledAt());
+        appointment.setScheduledAt(LocalDateTime.of(request.date(), request.hour()));
         appointment.setReason(request.reason());
+        appointment.setStatus("PENDIENTE");
         return appointment;
     }
 
