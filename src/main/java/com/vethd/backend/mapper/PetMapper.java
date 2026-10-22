@@ -4,6 +4,7 @@ import com.vethd.backend.DTOs.request.PetRequest;
 import com.vethd.backend.DTOs.response.PetResponse;
 import com.vethd.backend.model.Owner;
 import com.vethd.backend.model.Pet;
+import com.vethd.backend.util.GenderNormalizer;
 
 public class PetMapper {
 
@@ -17,7 +18,7 @@ public class PetMapper {
         pet.setName(request.name());
         pet.setSpecies(request.species());
         pet.setBreed(request.breed());
-        pet.setGender(request.gender());
+        pet.setGender(GenderNormalizer.toDatabase(request.gender()));
         pet.setBirthDate(request.birthDate());
         pet.setObservations(request.observations());
         pet.setPhotoUrl(request.photoUrl());
@@ -28,7 +29,7 @@ public class PetMapper {
         pet.setName(request.name());
         pet.setSpecies(request.species());
         pet.setBreed(request.breed());
-        pet.setGender(request.gender());
+        pet.setGender(GenderNormalizer.toDatabase(request.gender()));
         pet.setBirthDate(request.birthDate());
         pet.setObservations(request.observations());
         pet.setPhotoUrl(request.photoUrl());
@@ -40,7 +41,7 @@ public class PetMapper {
                 .name(pet.getName())
                 .species(pet.getSpecies())
                 .breed(pet.getBreed())
-                .gender(pet.getGender())
+                .gender(GenderNormalizer.toClient(pet.getGender()))
                 .birthDate(pet.getBirthDate())
                 .observations(pet.getObservations())
                 .photoUrl(pet.getPhotoUrl())

@@ -1,5 +1,6 @@
 package com.vethd.backend.model;
 
+import com.vethd.backend.util.GenderNormalizer;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -54,4 +55,14 @@ public class Pet {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * Garantiza que cualquier escritura (API, inicializadores, etc.) cumpla
+     * la restricción pets_gender_check ('MALE'/'FEMALE').
+     */
+    @PrePersist
+    @PreUpdate
+    private void normalizeGender() {
+        this.gender = GenderNormalizer.toDatabase(this.gender);
+    }
 }
