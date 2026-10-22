@@ -145,6 +145,21 @@ src/main/java/com/veterinariahd/backend/
   - Si se intenta llamar al endpoint `/logout` con un token ya invalidado o malformado, el sistema responde **HTTP 401**.
   - Los tokens en lista negra se limpian automáticamente conforme expira su tiempo de validez natural (`pruneExpiredBlacklistedTokens`), evitando sobrecarga de memoria.
 
+### Filtro Spring Security y Autorización por Rol (RBAC)
+- **Filtro (`JwtAuthenticationFilter`):** Intercepta cada solicitud HTTP inspeccionando el header `Authorization: Bearer <token>`.
+- **Validación Automática:** Comprueba firma criptográfica HMAC-SHA, expiración y verifica contra la lista negra en memoria antes de permitir el acceso.
+- **Roles y Permisos:**
+  - `PROPIETARIO` (compatible con `ROLE_OWNER`): Gestión de citas propias, mascotas y valoraciones (`POST /api/citas/*/valoracion`).
+  - `VETERINARIO` (compatible con `ROLE_VET`): Consulta de agenda médica (`GET /api/veterinarios/me/agenda`), atención de citas (`PATCH /api/citas/*/atendida`) y emisión de diagnósticos (`POST /api/citas/*/consulta`).
+  - `ADMIN`: Acceso a operaciones privilegiadas (`/api/admin/**`) y supervisión global del sistema.
+- **Manejo Estandarizado de Respuestas:**
+  - **HTTP 401 Unauthorized (`JwtAuthenticationEntryPoint`):** Retornado en formato JSON cuando falta el token, es inválido, está expirado o revocado.
+  - **HTTP 403 Forbidden (`JwtAccessDeniedHandler`):** Retornado en formato JSON cuando el rol autenticado no posee los permisos requeridos por el recurso.
+- **Endpoints Públicos (sin requerir token):**
+  - `/api/auth/**` (registro, login, logout).
+  - `/api/especialidades/**` (catálogo activo de especialidades).
+  - `/api/veterinarios/**` (listado público de veterinarios, disponibilidad y valoraciones públicas, excluyendo `/api/veterinarios/me/**`).
+
 ---
 
 ## 📄 10. Licencia
