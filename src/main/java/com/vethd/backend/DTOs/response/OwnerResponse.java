@@ -11,6 +11,7 @@ public record OwnerResponse(
         String lastName,
         String email,
         String phone,
-        String address
+        String address,
+        String photoUrl
 ) {
 }
