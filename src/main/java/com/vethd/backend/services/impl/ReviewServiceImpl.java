@@ -5,7 +5,7 @@ import com.vethd.backend.DTOs.response.ReviewResponse;
 import com.vethd.backend.DTOs.response.VeterinarianReviewsResponse;
 import com.vethd.backend.model.Review;
 import com.vethd.backend.model.Appointment;
-// import com.vethd.backend.repository.AppointmentRepository;
+import com.vethd.backend.repository.AppointmentRepository;
 import com.vethd.backend.repository.ReviewRepository;
 import com.vethd.backend.services.ReviewService;
 import lombok.RequiredArgsConstructor;
@@ -23,21 +23,14 @@ import java.util.stream.Collectors;
 public class ReviewServiceImpl implements ReviewService {
 
     private final ReviewRepository reviewRepository;
-    // private final AppointmentRepository appointmentRepository;
+    private final AppointmentRepository appointmentRepository;
 
     @Override
     @Transactional
     public ReviewResponse createReview(UUID appointmentId, ReviewRequest request, UUID currentUserId) {
 
-        /* Descomentar esta línea cuando se suba el AppointmentRepository
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada"));
-        */
-
-        Appointment appointment = null;
-        if (appointment == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada (Pendiente de repositorio)");
-        }
 
         // VALIDACIÓN (CRITERIOS DE US-34)
 
