@@ -2,6 +2,9 @@ package com.vethd.backend.controller;
 
 import com.vethd.backend.DTOs.response.OwnerResponse;
 import com.vethd.backend.services.OwnerService;
+import com.vethd.backend.model.Owner;
+import com.vethd.backend.repository.OwnerRepository;
+import com.vethd.backend.services.CurrentUserProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -29,9 +33,17 @@ class OwnerControllerTest {
 
     private static final UUID PROPIETARIO_DEMO_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID USER_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     @Mock
     private OwnerService ownerService;
+
+    @Mock
+    private OwnerRepository ownerRepository;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
 
     @InjectMocks
     private OwnerController ownerController;
@@ -54,8 +66,14 @@ class OwnerControllerTest {
                 .build();
     }
 
+    private void mockCurrentOwner() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
+        when(ownerRepository.findByUserId(USER_ID)).thenReturn(Optional.of(Owner.builder().id(PROPIETARIO_DEMO_ID).build()));
+    }
+
     @Test
     void getMeDevuelveElPerfilDelPropietario() throws Exception {
+        mockCurrentOwner();
         when(ownerService.getProfile(PROPIETARIO_DEMO_ID)).thenReturn(buildResponse());
 
         mockMvc.perform(get("/api/propietarios/me"))
@@ -65,7 +83,17 @@ class OwnerControllerTest {
     }
 
     @Test
+    void getMeDevuelve404SiElUsuarioNoTienePerfilDePropietario() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(USER_ID);
+        when(ownerRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/propietarios/me"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void putMeActualizaYDevuelveElPerfil() throws Exception {
+        mockCurrentOwner();
         when(ownerService.updateProfile(eq(PROPIETARIO_DEMO_ID), any())).thenReturn(buildResponse());
 
         mockMvc.perform(put("/api/propietarios/me")

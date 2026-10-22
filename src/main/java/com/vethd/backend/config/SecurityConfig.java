@@ -97,6 +97,9 @@ public class SecurityConfig {
                 // Endpoints exclusivos de ADMIN:
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
+                // Endpoints de perfil del propietario protegidos:
+                .requestMatchers("/api/propietarios/**").hasAnyRole("PROPIETARIO", "ADMIN")
+
                 // Cualquier otra solicitud requiere autenticación:
                 .anyRequest().authenticated()
             )
