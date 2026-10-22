@@ -327,4 +327,103 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.token").isString())
                 .andExpect(jsonPath("$.email").value("jorge@example.com"));
     }
+
+    // ==========================================
+    // US-03: Cierre de sesión (Logout & Invalidación)
+    // ==========================================
+
+    @Test
+    void shouldLogoutSuccessfullyWithBearerTokenAndInvalidateIt() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        userRepository.save(User.builder()
+                .dni("55667788")
+                .firstName("Marcos")
+                .lastName("Silva")
+                .email("marcos@example.com")
+                .passwordHash(passwordEncoder.encode("Marcos123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        String loginJson = """
+                {
+                  "email": "marcos@example.com",
+                  "password": "Marcos123!"
+                }
+                """;
+
+        String responseContent = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        // Extract token from response JSON
+        String token = responseContent.split("\"token\":\"")[1].split("\"")[0];
+
+        // 1. First logout call -> 200 OK
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Sesión cerrada correctamente"));
+
+        // 2. Calling logout again with the same token -> 401 Unauthorized (token is blacklisted)
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldLogoutSuccessfullyWithTokenInBody() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        userRepository.save(User.builder()
+                .dni("66778899")
+                .firstName("Claudia")
+                .lastName("Mendoza")
+                .email("claudia@example.com")
+                .passwordHash(passwordEncoder.encode("Claudia123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        String loginJson = """
+                {
+                  "email": "claudia@example.com",
+                  "password": "Claudia123!"
+                }
+                """;
+
+        String responseContent = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String token = responseContent.split("\"token\":\"")[1].split("\"")[0];
+
+        String logoutBody = String.format("{\"token\":\"%s\"}", token);
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(logoutBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Sesión cerrada correctamente"));
+    }
+
+    @Test
+    void shouldReturn400WhenLogoutWithoutToken() throws Exception {
+        mockMvc.perform(post("/api/auth/logout"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn401WhenLogoutWithInvalidToken() throws Exception {
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer token-completamente-invalido-123"))
+                .andExpect(status().isUnauthorized());
+    }
 }
