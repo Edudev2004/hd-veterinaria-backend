@@ -5,14 +5,8 @@ import com.vethd.backend.DTOs.request.AppointmentRequest;
 import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.mapper.AppointmentMapper;
-import com.vethd.backend.model.Appointment;
-import com.vethd.backend.model.Pet;
-import com.vethd.backend.model.Specialty;
-import com.vethd.backend.model.Veterinarian;
-import com.vethd.backend.repository.AppointmentRepository;
-import com.vethd.backend.repository.PetRepository;
-import com.vethd.backend.repository.SpecialtyRepository;
-import com.vethd.backend.repository.VeterinarianRepository;
+import com.vethd.backend.model.*;
+import com.vethd.backend.repository.*;
 import com.vethd.backend.services.AppointmentService;
 import com.vethd.backend.services.CurrentUserProvider;
 import jakarta.transaction.Transactional;
@@ -21,9 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -37,8 +34,10 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final VeterinarianRepository veterinarianRepository;
     private final SpecialtyRepository specialtyRepository;
     private final AppointmentRepository appointmentRepository;
+    private final DiagnosisRepository diagnosisRepository;
+    private final OwnerRepository ownerRepository;
+    private final UserRepository userRepository;
     private final CurrentUserProvider currentUserProvider;
-
 
     @Transactional
     @Override
@@ -129,6 +128,103 @@ public class AppointmentServiceImpl implements AppointmentService {
         return AppointmentMapper.toResponse(saved);
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Override
+    public List<AppointmentResponse> getMyAppointments(String estado, UUID mascotaId, LocalDate fecha, String busqueda) {
+        UUID currentUserId = currentUserProvider.getCurrentUserId();
+
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        String roleName = currentUser.getRole() != null ? currentUser.getRole().getName() : "";
+        boolean isOwner = ownerRepository.findByUserId(currentUserId).isPresent() ||
+                "PROPIETARIO".equalsIgnoreCase(roleName) ||
+                "ROLE_OWNER".equalsIgnoreCase(roleName) ||
+                "ROLE_PROPIETARIO".equalsIgnoreCase(roleName);
+
+        boolean isVet = veterinarianRepository.findByUserId(currentUserId).isPresent() ||
+                "VETERINARIO".equalsIgnoreCase(roleName) ||
+                "ROLE_VET".equalsIgnoreCase(roleName) ||
+                "ROLE_VETERINARIO".equalsIgnoreCase(roleName);
+
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(roleName) ||
+                "ROLE_ADMIN".equalsIgnoreCase(roleName);
+
+        List<Appointment> appointments;
+        if (isOwner) {
+            appointments = appointmentRepository.findByPetOwnerUserIdOrderByScheduledAtDesc(currentUserId);
+        } else if (isVet && !isAdmin) {
+            appointments = appointmentRepository.findByVeterinarianUserIdOrderByScheduledAtDesc(currentUserId);
+        } else {
+            appointments = appointmentRepository.findAllWithDetailsOrderByScheduledAtDesc();
+        }
+
+        Stream<Appointment> stream = appointments.stream();
+
+        if (estado != null && !estado.isBlank() && !"TODAS".equalsIgnoreCase(estado) && !"TODOS".equalsIgnoreCase(estado)) {
+            String targetStatus = estado.trim().toUpperCase();
+            stream = stream.filter(a -> a.getStatus().equalsIgnoreCase(targetStatus));
+        }
+
+        if (mascotaId != null) {
+            stream = stream.filter(a -> a.getPet() != null && a.getPet().getId().equals(mascotaId));
+        }
+
+        if (fecha != null) {
+            stream = stream.filter(a -> a.getScheduledAt().toLocalDate().equals(fecha));
+        }
+
+        if (busqueda != null && !busqueda.isBlank()) {
+            String q = busqueda.trim().toLowerCase();
+            stream = stream.filter(a -> {
+                String petName = a.getPet() != null ? a.getPet().getName().toLowerCase() : "";
+                String species = (a.getPet() != null && a.getPet().getSpecies() != null) ? a.getPet().getSpecies().toLowerCase() : "";
+                String breed = (a.getPet() != null && a.getPet().getBreed() != null) ? a.getPet().getBreed().toLowerCase() : "";
+                String vetFirst = (a.getVeterinarian() != null && a.getVeterinarian().getUser() != null) ? a.getVeterinarian().getUser().getFirstName().toLowerCase() : "";
+                String vetLast = (a.getVeterinarian() != null && a.getVeterinarian().getUser() != null) ? a.getVeterinarian().getUser().getLastName().toLowerCase() : "";
+                String vetFull = vetFirst + " " + vetLast;
+                String specialty = (a.getSpecialty() != null && a.getSpecialty().getName() != null) ? a.getSpecialty().getName().toLowerCase() : "";
+                String reason = a.getReason() != null ? a.getReason().toLowerCase() : "";
+                String idStr = a.getId() != null ? a.getId().toString().toLowerCase() : "";
+
+                return petName.contains(q) || species.contains(q) || breed.contains(q) ||
+                        vetFirst.contains(q) || vetLast.contains(q) || vetFull.contains(q) ||
+                        specialty.contains(q) || reason.contains(q) || idStr.contains(q);
+            });
+        }
+
+        return stream.map(AppointmentMapper::toResponse).toList();
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Override
+    public AppointmentResponse getAppointmentById(UUID id) {
+        UUID currentUserId = currentUserProvider.getCurrentUserId();
+
+        Appointment appointment = appointmentRepository.findByIdWithDetails(id)
+                .or(() -> appointmentRepository.findById(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada"));
+
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        String roleName = currentUser.getRole() != null ? currentUser.getRole().getName() : "";
+        boolean isOwner = appointment.getPet().getOwner().getUser().getId().equals(currentUserId);
+        boolean isAssignedVet = appointment.getVeterinarian().getUser().getId().equals(currentUserId);
+        boolean isVet = veterinarianRepository.findByUserId(currentUserId).isPresent() ||
+                "VETERINARIO".equalsIgnoreCase(roleName) ||
+                "ROLE_VET".equalsIgnoreCase(roleName) ||
+                "ROLE_VETERINARIO".equalsIgnoreCase(roleName);
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(roleName) ||
+                "ROLE_ADMIN".equalsIgnoreCase(roleName);
+
+        if (!isOwner && !isAssignedVet && !isVet && !isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permisos para ver esta cita");
+        }
+
+        Diagnosis diagnosis = diagnosisRepository.findByAppointment_Id(id).orElse(null);
+        return AppointmentMapper.toResponse(appointment, diagnosis);
+    }
 
     private Veterinarian resolveTargetVeterinarian(AppointmentRescheduledRequest request,
                                                    Appointment appointment) {
@@ -173,6 +269,4 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Slot is not available");
         }
     }
-
-
 }
