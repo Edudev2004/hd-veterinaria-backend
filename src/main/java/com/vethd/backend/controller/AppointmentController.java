@@ -1,5 +1,6 @@
 package com.vethd.backend.controller;
 
+import com.vethd.backend.DTOs.request.AppointmentCancelRequest;
 import com.vethd.backend.DTOs.request.AppointmentRequest;
 import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
@@ -29,6 +30,13 @@ public class AppointmentController {
             @PathVariable UUID id,
             @Valid @RequestBody AppointmentRescheduledRequest request) {
         return ResponseEntity.ok(appointmentService.rescheduleAppointment(id, request));
+    }
+
+    @PatchMapping("/citas/{id}/cancelar")
+    public ResponseEntity<AppointmentResponse> cancelAppointment(
+            @PathVariable UUID id,
+            @Valid @RequestBody AppointmentCancelRequest request) {
+        return ResponseEntity.ok(appointmentService.cancelAppointment(id, request));
     }
 
 }
