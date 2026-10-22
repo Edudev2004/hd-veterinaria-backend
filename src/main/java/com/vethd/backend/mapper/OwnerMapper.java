@@ -19,9 +19,25 @@ public class OwnerMapper {
         return owner;
     }
 
+    // Un campo null significa "sin cambios"; photoUrl en blanco borra la foto.
     public static void updateEntity(OwnerRequest request, Owner owner) {
-        owner.setPhone(request.phone());
-        owner.setAddress(request.address());
+        User user = owner.getUser();
+
+        if (request.firstName() != null && !request.firstName().isBlank()) {
+            user.setFirstName(request.firstName().trim());
+        }
+        if (request.lastName() != null && !request.lastName().isBlank()) {
+            user.setLastName(request.lastName().trim());
+        }
+        if (request.photoUrl() != null) {
+            user.setPhotoUrl(request.photoUrl().isBlank() ? null : request.photoUrl().trim());
+        }
+        if (request.phone() != null) {
+            owner.setPhone(request.phone());
+        }
+        if (request.address() != null) {
+            owner.setAddress(request.address());
+        }
     }
 
     public static OwnerResponse toResponse(Owner owner) {
@@ -33,6 +49,7 @@ public class OwnerMapper {
                 .email(user.getEmail())
                 .phone(owner.getPhone())
                 .address(owner.getAddress())
+                .photoUrl(user.getPhotoUrl())
                 .build();
     }
 }
