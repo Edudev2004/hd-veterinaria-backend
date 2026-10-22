@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,7 +61,7 @@ public class VeterinarianServiceImpl implements VeterinarianService {
         Set<LocalTime> booked = appointmentRepository.findByVeterinarian_IdAndScheduledAtBetweenAndStatus(
                         veterinarianId, from, to, "PENDIENTE"
                 ).stream()
-                .map(appointment -> appointment.getScheduledAt().toLocalTime())
+                .map(appointment -> appointment.getScheduledAt().toLocalTime().truncatedTo(ChronoUnit.HOURS))
                 .collect(Collectors.toSet());
 
         LocalDateTime now = LocalDateTime.now();
