@@ -26,4 +26,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             LocalDateTime scheduledAt,
             String status
     );
+
+    boolean existsByVeterinarian_IdAndScheduledAtAndStatusAndIdNot(
+            UUID veterinarianId,
+            LocalDateTime scheduledAt,
+            String status,
+            UUID id
+    );
 }
