@@ -27,3 +27,12 @@ spring:
 jwt:
   secret: ${JWT_SECRET:vethd_default_secret_key_at_least_256_bits_long_for_security_2026!}
   expiration: ${JWT_EXPIRATION:86400000}
+
+resend:
+  api-key: ${RESEND_API_KEY:}
+  from: ${RESEND_FROM:VetHD <onboarding@resend.dev>}
+
+supabase:
+  url: ${SUPABASE_URL:https://dtcduueozztdwwuurfqu.supabase.co}
+  key: ${SUPABASE_KEY:}
+  bucket: ${SUPABASE_BUCKET:vethd-bucket}
