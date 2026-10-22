@@ -1,6 +1,7 @@
 package com.vethd.backend.services.impl;
 
 import com.vethd.backend.DTOs.request.AppointmentRequest;
+import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.mapper.AppointmentMapper;
 import com.vethd.backend.model.Appointment;
@@ -62,24 +63,93 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this pet");
         }
 
-        if (request.hour().isBefore(START_HOUR) || !request.hour().isBefore(END_HOUR)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hour must be between 08:00 and 18:00");
-        }
+        validateWorkingHour(request.hour());
 
         LocalDateTime scheduledAt = LocalDateTime.of(request.date(), request.hour());
-
-        if (!scheduledAt.isAfter(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Appointment must be in the future");
-        }
-
-        if (appointmentRepository.existsByVeterinarian_IdAndScheduledAtAndStatus(
-                request.veterinarianId(), scheduledAt, STATUS_PENDING)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Slot is not available");
-        }
+        validateFutureDateTime(scheduledAt);
+        validateSlotIsFree(request.veterinarianId(),scheduledAt,null);
 
         Appointment appointment = AppointmentMapper.toEntity(request, pet, veterinarian, specialty);
         Appointment saved = appointmentRepository.save(appointment);
         return AppointmentMapper.toResponse(saved);
 
     }
+
+    @Transactional
+    @Override
+    public AppointmentResponse rescheduleAppointment(UUID id, AppointmentRescheduledRequest request) {
+
+        UUID currentUserId = currentUserProvider.getCurrentUserId();
+
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+
+        if (!appointment.getPet().getOwner().getUser().getId().equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this appointment");
+        }
+
+        if (!STATUS_PENDING.equals(appointment.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only pending appointments can be rescheduled");
+        }
+
+        Veterinarian targetVeterinarian = resolveTargetVeterinarian(request, appointment);
+
+        validateWorkingHour(request.newHour());
+
+        LocalDateTime scheduledAt = LocalDateTime.of(request.newDate(), request.newHour());
+        validateFutureDateTime(scheduledAt);
+        validateSlotIsFree(targetVeterinarian.getId(), scheduledAt, appointment.getId());
+
+        AppointmentMapper.rescheduleEntity(request, appointment, targetVeterinarian);
+        Appointment saved = appointmentRepository.save(appointment);
+        return AppointmentMapper.toResponse(saved);
+    }
+
+
+    private Veterinarian resolveTargetVeterinarian(AppointmentRescheduledRequest request,
+                                                   Appointment appointment) {
+        if (request.newVeterinarianId() == null) {
+            return appointment.getVeterinarian();
+        }
+
+        Veterinarian target = veterinarianRepository.findById(request.newVeterinarianId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinarian not found"));
+
+        if (!target.getSpecialties().contains(appointment.getSpecialty())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Specialty does not belong to veterinarian");
+        }
+
+        return target;
+    }
+
+    private void validateWorkingHour(LocalTime hour) {
+        if (hour.isBefore(START_HOUR) || !hour.isBefore(END_HOUR)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Hour must be between 08:00 and 18:00");
+        }
+    }
+
+    private void validateFutureDateTime(LocalDateTime scheduledAt) {
+        if (!scheduledAt.isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Appointment must be in the future");
+        }
+    }
+
+    private void validateSlotIsFree(UUID veterinarianId, LocalDateTime scheduledAt,
+                                    UUID excludedAppointmentId) {
+        boolean occupied = (excludedAppointmentId == null)
+                ? appointmentRepository.existsByVeterinarian_IdAndScheduledAtAndStatus(
+                veterinarianId, scheduledAt, STATUS_PENDING)
+                : appointmentRepository.existsByVeterinarian_IdAndScheduledAtAndStatusAndIdNot(
+                veterinarianId, scheduledAt, STATUS_PENDING, excludedAppointmentId);
+
+        if (occupied) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Slot is not available");
+        }
+    }
+
+
 }
