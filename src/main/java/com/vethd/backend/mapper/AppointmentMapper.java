@@ -1,9 +1,11 @@
 package com.vethd.backend.mapper;
 
 import com.vethd.backend.DTOs.request.AppointmentRequest;
-import com.vethd.backend.DTOs.request.AppointmentUpdateRequest;
+import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.model.*;
+
+import java.time.LocalDateTime;
 
 public class AppointmentMapper {
 
@@ -17,17 +19,22 @@ public class AppointmentMapper {
         appointment.setPet(pet);
         appointment.setVeterinarian(veterinarian);
         appointment.setSpecialty(specialty);
-        appointment.setScheduledAt(request.scheduledAt());
+        appointment.setScheduledAt(LocalDateTime.of(request.date(), request.hour()));
         appointment.setReason(request.reason());
+        appointment.setStatus("PENDIENTE");
         return appointment;
     }
 
-    public static void updateEntity(AppointmentUpdateRequest request, Appointment appointment,
-                                    Veterinarian veterinarian) {
+    public static void rescheduleEntity(AppointmentRescheduledRequest request, Appointment appointment, Veterinarian veterinarian) {
         appointment.setVeterinarian(veterinarian);
-        appointment.setScheduledAt(request.scheduledAt());
-        appointment.setReason(request.reason());
+        appointment.setScheduledAt(LocalDateTime.of(request.newDate(), request.newHour()));
     }
+
+    public static void cancelEntity(Appointment appointment, String cancellationReason) {
+        appointment.setStatus("CANCELADA");
+        appointment.setCancellationReason(cancellationReason);
+    }
+
 
     public static AppointmentResponse toResponse(Appointment appointment) {
         return AppointmentResponse.builder()
