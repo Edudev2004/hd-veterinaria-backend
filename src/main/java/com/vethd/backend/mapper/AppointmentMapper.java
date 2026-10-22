@@ -1,7 +1,7 @@
 package com.vethd.backend.mapper;
 
 import com.vethd.backend.DTOs.request.AppointmentRequest;
-import com.vethd.backend.DTOs.request.AppointmentUpdateRequest;
+import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.model.*;
 
@@ -25,12 +25,11 @@ public class AppointmentMapper {
         return appointment;
     }
 
-    public static void updateEntity(AppointmentUpdateRequest request, Appointment appointment,
-                                    Veterinarian veterinarian) {
+    public static void rescheduleEntity(AppointmentRescheduledRequest request, Appointment appointment, Veterinarian veterinarian) {
         appointment.setVeterinarian(veterinarian);
-        appointment.setScheduledAt(request.scheduledAt());
-        appointment.setReason(request.reason());
+        appointment.setScheduledAt(LocalDateTime.of(request.newDate(), request.newHour()));
     }
+
 
     public static AppointmentResponse toResponse(Appointment appointment) {
         return AppointmentResponse.builder()
