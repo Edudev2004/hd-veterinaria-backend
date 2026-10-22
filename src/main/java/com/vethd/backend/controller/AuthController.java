@@ -1,7 +1,9 @@
 package com.vethd.backend.controller;
 
+import com.vethd.backend.DTOs.request.ForgotPasswordRequest;
 import com.vethd.backend.DTOs.request.LoginRequest;
 import com.vethd.backend.DTOs.request.RegisterRequest;
+import com.vethd.backend.DTOs.request.ResetPasswordRequest;
 import com.vethd.backend.DTOs.response.AuthResponse;
 import com.vethd.backend.services.AuthService;
 import jakarta.validation.Valid;
@@ -41,5 +43,20 @@ public class AuthController {
         }
         authService.logout(token);
         return ResponseEntity.ok(Map.of("message", "Sesión cerrada correctamente"));
+    }
+
+    @PostMapping("/recuperar-password")
+    public ResponseEntity<Map<String, String>> recuperarPassword(@RequestBody ForgotPasswordRequest request) {
+        String token = authService.requestPasswordReset(request);
+        return ResponseEntity.ok(Map.of(
+                "message", "Se ha enviado un enlace de recuperación a su correo electrónico",
+                "token", token
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(Map.of("message", "Contraseña restablecida exitosamente"));
     }
 }

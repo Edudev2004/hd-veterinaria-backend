@@ -1,25 +1,32 @@
 package com.vethd.backend.services.impl;
 
+import com.vethd.backend.DTOs.request.ForgotPasswordRequest;
 import com.vethd.backend.DTOs.request.LoginRequest;
 import com.vethd.backend.DTOs.request.RegisterRequest;
+import com.vethd.backend.DTOs.request.ResetPasswordRequest;
 import com.vethd.backend.DTOs.response.AuthResponse;
 import com.vethd.backend.model.Owner;
+import com.vethd.backend.model.PasswordResetToken;
 import com.vethd.backend.model.Role;
 import com.vethd.backend.model.User;
 import com.vethd.backend.repository.OwnerRepository;
+import com.vethd.backend.repository.PasswordResetTokenRepository;
 import com.vethd.backend.repository.RoleRepository;
 import com.vethd.backend.repository.UserRepository;
 import com.vethd.backend.services.AuthService;
 import com.vethd.backend.services.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -27,6 +34,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final OwnerRepository ownerRepository;
     private final RoleRepository roleRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -219,6 +227,86 @@ public class AuthServiceImpl implements AuthService {
         }
 
         jwtService.invalidateToken(cleanedToken);
+    }
+
+    @Transactional
+    @Override
+    public String requestPasswordReset(ForgotPasswordRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no puede estar vacío");
+        }
+
+        String email = request.getEffectiveEmail();
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El correo electrónico es obligatorio");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato de correo electrónico inválido");
+        }
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe un usuario registrado con el correo proporcionado"));
+
+        String token = UUID.randomUUID().toString().replace("-", "");
+        LocalDateTime expiryDate = LocalDateTime.now().plusMinutes(30);
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(expiryDate)
+                .used(false)
+                .build();
+
+        passwordResetTokenRepository.save(resetToken);
+
+        // Simulación de envío de correo en los logs conforme al criterio de aceptación
+        log.info("[PASSWORD_RESET] Correo simulado a {}: Para restablecer su contraseña use el enlace: https://vethd.com/reset-password?token={} (Token válido por 30 minutos)", normalizedEmail, token);
+
+        return token;
+    }
+
+    @Transactional
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no puede estar vacío");
+        }
+
+        String token = request.getEffectiveToken();
+        if (token == null || token.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El token de restablecimiento es obligatorio");
+        }
+
+        String newPassword = request.getEffectivePassword();
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva contraseña es obligatoria");
+        }
+
+        if (newPassword.length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token de restablecimiento inválido"));
+
+        if (resetToken.isUsed()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El token de restablecimiento ya ha sido utilizado");
+        }
+
+        if (resetToken.isExpired()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El token de restablecimiento ha expirado");
+        }
+
+        User user = resetToken.getUser();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        log.info("[PASSWORD_RESET] Contraseña restablecida exitosamente para el usuario {}", user.getEmail());
     }
 
     private String mapDisplayRole(String roleName) {
