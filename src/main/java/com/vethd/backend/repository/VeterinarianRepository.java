@@ -4,15 +4,11 @@ import com.vethd.backend.model.Veterinarian;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID> {
-
     Optional<Veterinarian> findByUserId(UUID userId);
-
     @Query("""
             SELECT DISTINCT v FROM Veterinarian v
             JOIN FETCH v.user
@@ -20,7 +16,6 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID
             WHERE v.active = true
             """)
     List<Veterinarian> findActiveAll();
-
 
     @Query("""
             SELECT DISTINCT v FROM Veterinarian v
@@ -37,4 +32,6 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID
             GROUP BY a.veterinarian.id
             """)
     List<Object[]> findAverageRatings();
+
+    long countByActiveTrue();
 }

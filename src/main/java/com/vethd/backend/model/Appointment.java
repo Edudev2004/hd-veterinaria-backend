@@ -1,13 +1,10 @@
 package com.vethd.backend.model;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 @Entity
 @Table(name = "appointments")
 @Getter
@@ -16,7 +13,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Appointment {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
