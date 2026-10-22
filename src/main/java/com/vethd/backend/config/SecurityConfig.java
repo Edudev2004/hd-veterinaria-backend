@@ -100,6 +100,9 @@ public class SecurityConfig {
                 // Endpoints de perfil del propietario protegidos:
                 .requestMatchers("/api/propietarios/**").hasAnyRole("PROPIETARIO", "ADMIN")
 
+                // Endpoints de almacenamiento (fotos y archivos):
+                .requestMatchers("/api/storage/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
+
                 // Cualquier otra solicitud requiere autenticación:
                 .anyRequest().authenticated()
             )
