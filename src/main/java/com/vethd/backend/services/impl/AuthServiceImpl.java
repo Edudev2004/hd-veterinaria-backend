@@ -204,6 +204,23 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    @Override
+    public void logout(String token) {
+        if (token == null || token.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token no proporcionado");
+        }
+
+        String cleanedToken = token.startsWith("Bearer ") || token.startsWith("bearer ")
+                ? token.substring(7).trim()
+                : token.trim();
+
+        if (cleanedToken.isBlank() || !jwtService.isTokenValid(cleanedToken)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido, expirado o ya revocado");
+        }
+
+        jwtService.invalidateToken(cleanedToken);
+    }
+
     private String mapDisplayRole(String roleName) {
         if (roleName == null) return "propietario";
         String upper = roleName.toUpperCase();
