@@ -45,11 +45,14 @@ public class AuthControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private com.vethd.backend.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private static final String[] TABLAS = {
-            "veterinarian_specialties", "reviews", "appointments", "pets",
+            "password_reset_tokens", "veterinarian_specialties", "reviews", "appointments", "pets",
             "owners", "veterinarians", "specialties", "users", "roles"
     };
 
@@ -425,5 +428,221 @@ public class AuthControllerTest {
         mockMvc.perform(post("/api/auth/logout")
                         .header("Authorization", "Bearer token-completamente-invalido-123"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // ==========================================
+    // US-05: Recuperación y Restablecimiento de contraseña
+    // ==========================================
+
+    @Test
+    void shouldReturn200AndGenerateTokenWhenRequestPasswordResetWithExistingEmail() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        userRepository.save(User.builder()
+                .dni("11223344")
+                .firstName("Marcos")
+                .lastName("Lopez")
+                .email("marcos@example.com")
+                .passwordHash(passwordEncoder.encode("Marcos123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        String json = """
+                {
+                  "correo": "marcos@example.com"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/recuperar-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Se ha enviado un enlace de recuperación a su correo electrónico"))
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void shouldReturn404WhenRequestPasswordResetWithNonExistentEmail() throws Exception {
+        String json = """
+                {
+                  "correo": "noexiste@example.com"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/recuperar-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenRequestPasswordResetWithInvalidEmail() throws Exception {
+        String json = """
+                {
+                  "correo": "formato-invalido"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/recuperar-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldResetPasswordAndAllowLoginWithNewPassword() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        User user = userRepository.save(User.builder()
+                .dni("55443322")
+                .firstName("Patricia")
+                .lastName("Vega")
+                .email("patricia@example.com")
+                .passwordHash(passwordEncoder.encode("ViejaPassword123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        // 1. Solicitar recuperación para obtener token
+        String requestJson = """
+                {
+                  "email": "patricia@example.com"
+                }
+                """;
+
+        String responseContent = mockMvc.perform(post("/api/auth/recuperar-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String token = responseContent.split("\"token\":\"")[1].split("\"")[0];
+
+        // 2. Restablecer contraseña con el token
+        String resetJson = String.format("""
+                {
+                  "token": "%s",
+                  "nuevaPassword": "NuevaPassword123!"
+                }
+                """, token);
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Contraseña restablecida exitosamente"));
+
+        // 3. Verificar que el login funciona con la nueva contraseña
+        String loginJson = """
+                {
+                  "email": "patricia@example.com",
+                  "password": "NuevaPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void shouldReturn400WhenResetPasswordWithExpiredToken() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        User user = userRepository.save(User.builder()
+                .dni("99887766")
+                .firstName("Daniel")
+                .lastName("Rios")
+                .email("daniel@example.com")
+                .passwordHash(passwordEncoder.encode("Daniel123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        com.vethd.backend.model.PasswordResetToken expiredToken =
+                passwordResetTokenRepository.save(com.vethd.backend.model.PasswordResetToken.builder()
+                        .token("token_expirado_test")
+                        .user(user)
+                        .expiryDate(java.time.LocalDateTime.now().minusMinutes(10))
+                        .used(false)
+                        .build());
+
+        String resetJson = """
+                {
+                  "token": "token_expirado_test",
+                  "nuevaPassword": "NuevaPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenResetPasswordWithReusedToken() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        User user = userRepository.save(User.builder()
+                .dni("88776655")
+                .firstName("Elena")
+                .lastName("Gomez")
+                .email("elena@example.com")
+                .passwordHash(passwordEncoder.encode("Elena123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        com.vethd.backend.model.PasswordResetToken usedToken =
+                passwordResetTokenRepository.save(com.vethd.backend.model.PasswordResetToken.builder()
+                        .token("token_ya_usado_test")
+                        .user(user)
+                        .expiryDate(java.time.LocalDateTime.now().plusMinutes(20))
+                        .used(true)
+                        .build());
+
+        String resetJson = """
+                {
+                  "token": "token_ya_usado_test",
+                  "nuevaPassword": "NuevaPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenResetPasswordWithShortPassword() throws Exception {
+        String resetJson = """
+                {
+                  "token": "any_token",
+                  "nuevaPassword": "short"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenResetPasswordWithNonExistentToken() throws Exception {
+        String resetJson = """
+                {
+                  "token": "token_que_no_existe_en_bd",
+                  "nuevaPassword": "NuevaPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetJson))
+                .andExpect(status().isBadRequest());
     }
 }

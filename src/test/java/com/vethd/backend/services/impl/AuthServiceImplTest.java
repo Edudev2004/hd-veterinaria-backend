@@ -46,6 +46,9 @@ public class AuthServiceImplTest {
     @Mock
     private JwtService jwtService;
 
+    @Mock
+    private com.vethd.backend.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -427,5 +430,170 @@ public class AuthServiceImplTest {
         assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
         assertTrue(ex.getReason().contains("Token inválido, expirado o ya revocado"));
         verify(jwtService, never()).invalidateToken(any());
+    }
+
+    // ==========================================
+    // PRUEBAS DE RECUPERACIÓN Y RESET DE PASSWORD (US-05)
+    // ==========================================
+
+    @Test
+    void shouldGenerateResetTokenWhenEmailExists() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("usuario@vethd.com")
+                .firstName("Carlos")
+                .lastName("Ramirez")
+                .active(true)
+                .build();
+
+        when(userRepository.findByEmail("usuario@vethd.com")).thenReturn(Optional.of(user));
+
+        com.vethd.backend.DTOs.request.ForgotPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ForgotPasswordRequest("usuario@vethd.com", null);
+
+        String token = authService.requestPasswordReset(request);
+
+        assertNotNull(token);
+        assertFalse(token.isBlank());
+        verify(passwordResetTokenRepository).save(any(com.vethd.backend.model.PasswordResetToken.class));
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenEmailDoesNotExistForPasswordReset() {
+        when(userRepository.findByEmail("noexiste@vethd.com")).thenReturn(Optional.empty());
+
+        com.vethd.backend.DTOs.request.ForgotPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ForgotPasswordRequest(null, "noexiste@vethd.com");
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.requestPasswordReset(request)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verify(passwordResetTokenRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenEmailIsInvalidOrBlankForReset() {
+        com.vethd.backend.DTOs.request.ForgotPasswordRequest requestBlank =
+                new com.vethd.backend.DTOs.request.ForgotPasswordRequest("   ", null);
+
+        ResponseStatusException ex1 = assertThrows(ResponseStatusException.class, () ->
+                authService.requestPasswordReset(requestBlank)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex1.getStatusCode());
+
+        com.vethd.backend.DTOs.request.ForgotPasswordRequest requestInvalidFormat =
+                new com.vethd.backend.DTOs.request.ForgotPasswordRequest("correo-sin-formato", null);
+
+        ResponseStatusException ex2 = assertThrows(ResponseStatusException.class, () ->
+                authService.requestPasswordReset(requestInvalidFormat)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex2.getStatusCode());
+    }
+
+    @Test
+    void shouldResetPasswordSuccessfullyWhenTokenIsValid() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("reset@vethd.com")
+                .passwordHash("old_hash")
+                .build();
+
+        com.vethd.backend.model.PasswordResetToken resetToken = com.vethd.backend.model.PasswordResetToken.builder()
+                .token("valid_token_123")
+                .user(user)
+                .expiryDate(java.time.LocalDateTime.now().plusMinutes(20))
+                .used(false)
+                .build();
+
+        when(passwordResetTokenRepository.findByToken("valid_token_123")).thenReturn(Optional.of(resetToken));
+        when(passwordEncoder.encode("NuevaPassword123!")).thenReturn("new_encoded_hash");
+
+        com.vethd.backend.DTOs.request.ResetPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ResetPasswordRequest("valid_token_123", "NuevaPassword123!", null, null);
+
+        assertDoesNotThrow(() -> authService.resetPassword(request));
+
+        assertTrue(resetToken.isUsed());
+        assertEquals("new_encoded_hash", user.getPasswordHash());
+        verify(userRepository).save(user);
+        verify(passwordResetTokenRepository).save(resetToken);
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenResetTokenNotFound() {
+        when(passwordResetTokenRepository.findByToken("non_existent_token")).thenReturn(Optional.empty());
+
+        com.vethd.backend.DTOs.request.ResetPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ResetPasswordRequest("non_existent_token", "NuevaPassword123!", null, null);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.resetPassword(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Token de restablecimiento inválido"));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenResetTokenIsExpired() {
+        User user = User.builder().id(UUID.randomUUID()).email("expired@vethd.com").build();
+
+        com.vethd.backend.model.PasswordResetToken resetToken = com.vethd.backend.model.PasswordResetToken.builder()
+                .token("expired_token")
+                .user(user)
+                .expiryDate(java.time.LocalDateTime.now().minusMinutes(5)) // Expirado hace 5 min
+                .used(false)
+                .build();
+
+        when(passwordResetTokenRepository.findByToken("expired_token")).thenReturn(Optional.of(resetToken));
+
+        com.vethd.backend.DTOs.request.ResetPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ResetPasswordRequest("expired_token", "NuevaPassword123!", null, null);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.resetPassword(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("ha expirado"));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenResetTokenIsAlreadyUsed() {
+        User user = User.builder().id(UUID.randomUUID()).email("used@vethd.com").build();
+
+        com.vethd.backend.model.PasswordResetToken resetToken = com.vethd.backend.model.PasswordResetToken.builder()
+                .token("used_token")
+                .user(user)
+                .expiryDate(java.time.LocalDateTime.now().plusMinutes(20))
+                .used(true) // Ya fue usado
+                .build();
+
+        when(passwordResetTokenRepository.findByToken("used_token")).thenReturn(Optional.of(resetToken));
+
+        com.vethd.backend.DTOs.request.ResetPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ResetPasswordRequest("used_token", "NuevaPassword123!", null, null);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.resetPassword(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("ya ha sido utilizado"));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenNewPasswordIsTooShort() {
+        com.vethd.backend.DTOs.request.ResetPasswordRequest request =
+                new com.vethd.backend.DTOs.request.ResetPasswordRequest("any_token", "short", null, null);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                authService.resetPassword(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("al menos 8 caracteres"));
     }
 }
