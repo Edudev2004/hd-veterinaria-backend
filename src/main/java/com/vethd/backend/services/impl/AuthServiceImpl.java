@@ -1,5 +1,6 @@
 package com.vethd.backend.services.impl;
 
+import com.vethd.backend.DTOs.request.LoginRequest;
 import com.vethd.backend.DTOs.request.RegisterRequest;
 import com.vethd.backend.DTOs.response.AuthResponse;
 import com.vethd.backend.model.Owner;
@@ -103,7 +104,9 @@ public class AuthServiceImpl implements AuthService {
 
         Owner savedOwner = ownerRepository.save(owner);
 
-        String token = jwtService.generateToken(savedUser.getId(), savedUser.getEmail(), role.getName());
+        String roleName = role.getName();
+        String displayRole = mapDisplayRole(roleName);
+        String token = jwtService.generateToken(savedUser.getId(), savedUser.getEmail(), roleName);
 
         String fullName = (savedUser.getFirstName() + " " + savedUser.getLastName()).trim();
 
@@ -115,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
                 .telefono(savedOwner.getPhone())
                 .direccion(savedOwner.getAddress())
                 .fotoUrl(savedUser.getPhotoUrl())
-                .rol("propietario")
+                .rol(displayRole)
                 .activo(savedUser.isActive())
                 .createdAt(savedUser.getCreatedAt())
                 .build();
@@ -130,10 +133,89 @@ public class AuthServiceImpl implements AuthService {
                 .email(savedUser.getEmail())
                 .telefono(savedOwner.getPhone())
                 .direccion(savedOwner.getAddress())
-                .rol("propietario")
+                .rol(displayRole)
                 .activo(savedUser.isActive())
                 .createdAt(savedUser.getCreatedAt())
                 .user(userData)
                 .build();
+    }
+
+    @Transactional
+    @Override
+    public AuthResponse login(LoginRequest request) {
+        String email = request.getEffectiveEmail();
+        String password = request.getEffectivePassword();
+
+        if (email == null || email.isBlank() || password == null || password.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Correo y contraseña son obligatorios");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas"));
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas");
+        }
+
+        if (!user.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La cuenta se encuentra desactivada");
+        }
+
+        Owner owner = ownerRepository.findByUserId(user.getId()).orElse(null);
+        UUID ownerId = owner != null ? owner.getId() : null;
+        String phone = owner != null ? owner.getPhone() : null;
+        String address = owner != null ? owner.getAddress() : null;
+
+        String roleName = user.getRole().getName();
+        String displayRole = mapDisplayRole(roleName);
+
+        String token = jwtService.generateToken(user.getId(), user.getEmail(), roleName);
+        String fullName = (user.getFirstName() + " " + user.getLastName()).trim();
+
+        AuthResponse.UserData userData = AuthResponse.UserData.builder()
+                .id(user.getId())
+                .propietarioId(ownerId)
+                .nombre(fullName)
+                .email(user.getEmail())
+                .telefono(phone)
+                .direccion(address)
+                .fotoUrl(user.getPhotoUrl())
+                .rol(displayRole)
+                .activo(user.isActive())
+                .createdAt(user.getCreatedAt())
+                .build();
+
+        return AuthResponse.builder()
+                .token(token)
+                .id(user.getId())
+                .propietarioId(ownerId)
+                .nombre(fullName)
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .telefono(phone)
+                .direccion(address)
+                .rol(displayRole)
+                .activo(user.isActive())
+                .createdAt(user.getCreatedAt())
+                .user(userData)
+                .build();
+    }
+
+    private String mapDisplayRole(String roleName) {
+        if (roleName == null) return "propietario";
+        String upper = roleName.toUpperCase();
+        if (upper.contains("OWNER") || upper.contains("PROPIETARIO")) {
+            return "propietario";
+        }
+        if (upper.contains("VET") || upper.contains("VETERINARIO")) {
+            return "veterinario";
+        }
+        if (upper.contains("ADMIN")) {
+            return "admin";
+        }
+        return roleName.toLowerCase();
     }
 }
