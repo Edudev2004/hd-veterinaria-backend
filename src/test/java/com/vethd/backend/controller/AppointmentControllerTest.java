@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,7 +44,7 @@ public class AppointmentControllerTest {
     private static final String REASON = "limping after walk";
 
     private static final String[] TABLAS = {
-            "veterinarian_specialties", "reviews", "appointments", "pets",
+            "veterinarian_specialties", "reviews", "diagnoses", "appointments", "pets",
             "owners", "veterinarians", "specialties", "users", "roles"
     };
 
@@ -387,6 +388,170 @@ public class AppointmentControllerTest {
                         .content(appointmentJson(FUTURE_DATE, "10:00")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDIENTE"));
+    }
+
+    // ---------------------------------------------------------------
+    // US-17 - MIS CITAS Y DETALLE DE CITA
+    // ---------------------------------------------------------------
+
+    @Test
+    void shouldListMyAppointmentsForOwner() throws Exception {
+        setupScenario();
+        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment a2 = pendingAppointment(LocalDateTime.of(2026, 11, 16, 11, 0));
+
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(a2.getId().toString()))
+                .andExpect(jsonPath("$[0].pet.name").value("Toby"))
+                .andExpect(jsonPath("$[0].veterinarian.name").value("Ana Perez"))
+                .andExpect(jsonPath("$[1].id").value(a1.getId().toString()));
+    }
+
+    @Test
+    void shouldFilterMyAppointmentsByStatus() throws Exception {
+        setupScenario();
+        Appointment pending = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment cancelled = pendingAppointment(LocalDateTime.of(2026, 11, 16, 11, 0));
+        cancelled.setStatus("CANCELADA");
+        cancelled.setCancellationReason("Dueño ocupado");
+        em.flush();
+
+        // Filtro PENDIENTE
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .param("estado", "PENDIENTE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(pending.getId().toString()))
+                .andExpect(jsonPath("$[0].status").value("PENDIENTE"));
+
+        // Filtro CANCELADA
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .param("estado", "CANCELADA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(cancelled.getId().toString()))
+                .andExpect(jsonPath("$[0].status").value("CANCELADA"))
+                .andExpect(jsonPath("$[0].cancellationReason").value("Dueño ocupado"));
+
+        // Filtro TODAS
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .param("estado", "TODAS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void shouldFilterMyAppointmentsByPetId() throws Exception {
+        setupScenario();
+        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        // Segunda mascota del mismo dueño
+        Pet pet2 = Pet.builder()
+                .owner(pet.getOwner())
+                .name("Michi")
+                .species("Gato")
+                .breed("Siames")
+                .gender("FEMALE")
+                .active(true)
+                .build();
+        em.persist(pet2);
+        Appointment a2 = createAppointment(pet2, vet, cardio, LocalDateTime.of(2026, 11, 16, 11, 0));
+        em.flush();
+
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .param("mascotaId", pet2.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(a2.getId().toString()))
+                .andExpect(jsonPath("$[0].pet.name").value("Michi"));
+    }
+
+    @Test
+    void shouldFilterMyAppointmentsBySearchTerm() throws Exception {
+        setupScenario();
+        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .param("busqueda", "Toby"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(a1.getId().toString()));
+
+        mockMvc.perform(get("/api/citas")
+                        .header(USER_HEADER, ownerId.toString())
+                        .param("busqueda", "no-coincide-nada"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void shouldGetAppointmentsViaAliasEndpoint() throws Exception {
+        setupScenario();
+        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(get("/api/citas/mis-citas")
+                        .header(USER_HEADER, ownerId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(a1.getId().toString()));
+    }
+
+    @Test
+    void shouldGetAppointmentDetailsById() throws Exception {
+        setupScenario();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(get("/api/citas/" + appointment.getId())
+                        .header(USER_HEADER, ownerId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(appointment.getId().toString()))
+                .andExpect(jsonPath("$.status").value("PENDIENTE"))
+                .andExpect(jsonPath("$.reason").value(REASON))
+                .andExpect(jsonPath("$.scheduledAt").value(FUTURE_DATE + "T10:00:00"))
+                .andExpect(jsonPath("$.pet.id").value(pet.getId().toString()))
+                .andExpect(jsonPath("$.pet.name").value(pet.getName()))
+                .andExpect(jsonPath("$.veterinarian.id").value(vet.getId().toString()))
+                .andExpect(jsonPath("$.veterinarian.name").value("Ana Perez"));
+    }
+
+    @Test
+    void shouldReturn404WhenAppointmentDetailNotFound() throws Exception {
+        setupScenario();
+
+        mockMvc.perform(get("/api/citas/" + UUID.randomUUID())
+                        .header(USER_HEADER, ownerId.toString()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn403WhenOtherOwnerTriesToViewAppointmentDetail() throws Exception {
+        setupScenario();
+        UUID intruderId = createPet(ownerRole, "70000008", "otro-dueno-detalle@test.com")
+                .getOwner().getUser().getId();
+        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+
+        mockMvc.perform(get("/api/citas/" + appointment.getId())
+                        .header(USER_HEADER, intruderId.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturn401WhenGetAppointmentsWithoutUserHeader() throws Exception {
+        setupScenario();
+
+        mockMvc.perform(get("/api/citas"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/citas/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
     }
 
     // ---------------------------------------------------------------

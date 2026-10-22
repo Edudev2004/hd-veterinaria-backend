@@ -5,6 +5,8 @@ import com.vethd.backend.DTOs.request.AppointmentRequest;
 import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface AppointmentService {
@@ -13,4 +15,8 @@ public interface AppointmentService {
     AppointmentResponse rescheduleAppointment(UUID id, AppointmentRescheduledRequest request);
 
     AppointmentResponse cancelAppointment(UUID id, AppointmentCancelRequest request);
+
+    List<AppointmentResponse> getMyAppointments(String estado, UUID mascotaId, LocalDate fecha, String busqueda);
+
+    AppointmentResponse getAppointmentById(UUID id);
 }
