@@ -36,7 +36,7 @@ public class SecurityAuthorizationTest {
     // ==========================================
 
     @Test
-    @DisplayName("Endpoint publico de especialidades HTTP 200")
+    @DisplayName("Especialidades publicas sin token")
     void publicEndpoint_Specialties_NoTokenRequired()
             throws Exception {
 
@@ -45,7 +45,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("Endpoint publico de veterinarios HTTP 200")
+    @DisplayName("Veterinarios publicos sin token")
     void publicEndpoint_Veterinarians_NoTokenRequired()
             throws Exception {
 
@@ -70,13 +70,12 @@ public class SecurityAuthorizationTest {
                     int code = result.getResponse().getStatus();
 
                     if (code == 401 &&
-                        result.getResponse()
-                              .getContentAsString()
-                              .contains("Token de autenticación faltante")) {
+                            result.getResponse()
+                                    .getContentAsString()
+                                    .contains("Token de autenticación faltante")) {
 
                         throw new AssertionError(
-                            "El login no debe exigir JWT"
-                        );
+                                "El login no debe exigir JWT");
                     }
                 });
     }
@@ -96,19 +95,17 @@ public class SecurityAuthorizationTest {
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message")
-                    .value("Token de autenticación faltante, inválido o expirado"));
+                        .value("Token de autenticación faltante, inválido o expirado"));
     }
 
     @Test
-    @DisplayName("Token invalido retorna HTTP 401")
+    @DisplayName("Token invalido retorna 401")
     void protectedEndpoint_InvalidToken_Returns401()
             throws Exception {
 
         mockMvc.perform(get("/api/veterinarios/me/agenda")
-                .header(
-                    "Authorization",
-                    "Bearer token_completamente_invalido_12345"
-                )
+                .header("Authorization",
+                        "Bearer token_completamente_invalido_12345")
                 .param("fecha", "2026-10-22"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
@@ -116,7 +113,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("Token revocado retorna HTTP 401")
+    @DisplayName("Token revocado retorna 401")
     void protectedEndpoint_RevokedToken_Returns401()
             throws Exception {
 
@@ -141,7 +138,7 @@ public class SecurityAuthorizationTest {
     // ==========================================
 
     @Test
-    @DisplayName("PROPIETARIO no puede consultar agenda veterinaria")
+    @DisplayName("PROPIETARIO no accede a agenda veterinaria")
     void propietario_AccessingVetSchedule_Returns403Forbidden()
             throws Exception {
 
@@ -158,11 +155,11 @@ public class SecurityAuthorizationTest {
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"))
                 .andExpect(jsonPath("$.message")
-                    .value("No tiene permisos para acceder a este recurso"));
+                        .value("No tiene permisos para acceder a este recurso"));
     }
 
     @Test
-    @DisplayName("VETERINARIO puede consultar su agenda")
+    @DisplayName("VETERINARIO accede a agenda")
     void veterinario_AccessingVetSchedule_Returns200Ok()
             throws Exception {
 
@@ -179,7 +176,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("ADMIN puede consultar agenda veterinaria")
+    @DisplayName("ADMIN accede a agenda veterinaria")
     void admin_AccessingVetSchedule_Returns200Ok()
             throws Exception {
 
@@ -196,7 +193,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("PROPIETARIO no puede marcar cita atendida")
+    @DisplayName("PROPIETARIO no puede atender citas")
     void propietario_MarkingAppointmentAttended_Returns403Forbidden()
             throws Exception {
 
@@ -216,7 +213,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("VETERINARIO pasa seguridad para atender citas")
+    @DisplayName("VETERINARIO puede pasar seguridad de citas")
     void veterinario_MarkingAppointmentAttended_PassesSecurity()
             throws Exception {
 
@@ -235,14 +232,13 @@ public class SecurityAuthorizationTest {
 
                     if (code == 401 || code == 403) {
                         throw new AssertionError(
-                            "VETERINARIO debe pasar seguridad"
-                        );
+                                "VETERINARIO debe pasar seguridad");
                     }
                 });
     }
 
     @Test
-    @DisplayName("ADMIN pasa seguridad para atender citas")
+    @DisplayName("ADMIN puede pasar seguridad de citas")
     void admin_MarkingAppointmentAttended_PassesSecurity()
             throws Exception {
 
@@ -261,8 +257,7 @@ public class SecurityAuthorizationTest {
 
                     if (code == 401 || code == 403) {
                         throw new AssertionError(
-                            "ADMIN debe pasar seguridad"
-                        );
+                                "ADMIN debe pasar seguridad");
                     }
                 });
     }
@@ -295,7 +290,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("PROPIETARIO pasa seguridad para valorar citas")
+    @DisplayName("PROPIETARIO puede pasar seguridad de valoraciones")
     void propietario_ReviewingAppointment_PassesSecurity()
             throws Exception {
 
@@ -321,8 +316,7 @@ public class SecurityAuthorizationTest {
 
                     if (code == 401 || code == 403) {
                         throw new AssertionError(
-                            "PROPIETARIO debe pasar seguridad"
-                        );
+                                "PROPIETARIO debe pasar seguridad");
                     }
                 });
     }
@@ -363,7 +357,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("Endpoints admin restringidos para otros roles")
+    @DisplayName("Endpoints administrativos solo para ADMIN")
     void adminEndpoints_OnlyAccessibleForAdmin()
             throws Exception {
 
@@ -388,6 +382,10 @@ public class SecurityAuthorizationTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ==========================================
+    // 4. US-29 CRUD DE ESPECIALIDADES
+    // ==========================================
+
     @Test
     @DisplayName("US-29 GET admin sin token retorna 401")
     void specialtiesAdmin_WithoutToken_Returns401()
@@ -398,7 +396,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("US-29 propietario no puede listar especialidades")
+    @DisplayName("US-29 PROPIETARIO no puede listar especialidades")
     void specialtiesAdmin_Owner_Returns403()
             throws Exception {
 
@@ -414,7 +412,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("US-29 propietario no puede crear especialidades")
+    @DisplayName("US-29 PROPIETARIO no puede crear especialidades")
     void specialtiesAdmin_OwnerCannotCreate_Returns403()
             throws Exception {
 
@@ -437,7 +435,7 @@ public class SecurityAuthorizationTest {
     }
 
     @Test
-    @DisplayName("US-29 veterinario no puede editar especialidades")
+    @DisplayName("US-29 VETERINARIO no puede editar especialidades")
     void specialtiesAdmin_VetCannotUpdate_Returns403()
             throws Exception {
 
@@ -461,7 +459,8 @@ public class SecurityAuthorizationTest {
                 .andExpect(status().isForbidden());
     }
 
-    @DisplayName("US-29 veterinario no puede cambiar estado")
+    @Test
+    @DisplayName("US-29 VETERINARIO no puede cambiar estado")
     void specialtiesAdmin_VetCannotChangeStatus_Returns403()
             throws Exception {
 
@@ -478,11 +477,11 @@ public class SecurityAuthorizationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "active": false
-                                }
-                                """)
-        ).andExpect(status().isForbidden());
+                            {
+                              "active": false
+                            }
+                            """))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -496,28 +495,26 @@ public class SecurityAuthorizationTest {
                 "ADMIN"
         );
 
-        mockMvc.perform(
-                get("/api/admin/especialidades")
-                        .header("Authorization", "Bearer " + token)
-        ).andExpect(status().isOk());
+        mockMvc.perform(get("/api/admin/especialidades")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     // ==========================================
-    // PRUEBAS INCORPORADAS DESDE DEVELOP
+    // 5. PRUEBAS INCORPORADAS DESDE DEVELOP
     // ==========================================
 
     @Test
-    @DisplayName("Usuario anonimo sin token no puede acceder a propietarios/me")
+    @DisplayName("Anonimo no puede acceder a perfil de propietario")
     void anonymous_AccessingOwnerProfile_Returns401()
             throws Exception {
 
-        mockMvc.perform(
-                get("/api/propietarios/me")
-        ).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/propietarios/me"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("VETERINARIO no puede acceder a propietarios/me")
+    @DisplayName("VETERINARIO no puede acceder a perfil de propietario")
     void veterinario_AccessingOwnerProfile_Returns403()
             throws Exception {
 
@@ -527,9 +524,8 @@ public class SecurityAuthorizationTest {
                 "VETERINARIO"
         );
 
-        mockMvc.perform(
-                get("/api/propietarios/me")
-                        .header("Authorization", "Bearer " + vetToken)
-        ).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/propietarios/me")
+                .header("Authorization", "Bearer " + vetToken))
+                .andExpect(status().isForbidden());
     }
 }

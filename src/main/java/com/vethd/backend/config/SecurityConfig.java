@@ -95,8 +95,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/propietarios/me", "/api/propietarios/me/**")
                 .hasAnyRole("PROPIETARIO", "ADMIN")
 
+                // Endpoints de mascotas e historial clínico protegidos:
+                .requestMatchers("/api/mascotas/**", "/api/pets/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
+
                 // Endpoints exclusivos de ADMIN:
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                // Endpoints de perfil del propietario protegidos:
+                .requestMatchers("/api/propietarios/**").hasAnyRole("PROPIETARIO", "ADMIN")
+
+                // Endpoints de almacenamiento (fotos y archivos):
+                .requestMatchers("/api/storage/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
 
                 // Cualquier otra solicitud requiere autenticación:
                 .anyRequest().authenticated()

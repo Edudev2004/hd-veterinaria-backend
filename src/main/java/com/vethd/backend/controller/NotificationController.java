@@ -1,6 +1,7 @@
 package com.vethd.backend.controller;
 
 import com.vethd.backend.DTOs.response.NotificationResponse;
+import com.vethd.backend.services.CurrentUserProvider;
 import com.vethd.backend.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,13 +17,14 @@ import java.util.UUID;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final CurrentUserProvider currentUserProvider;
 
     // 1. GET /api/notificaciones - Retorna notificaciones del usuario en sesión
     @GetMapping("/notificaciones")
     public ResponseEntity<List<NotificationResponse>> getUserNotifications(
-            @RequestHeader("X-User-Id") UUID currentUserId
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId
     ) {
-        List<NotificationResponse> notifications = notificationService.getUserNotifications(currentUserId);
+        List<NotificationResponse> notifications = notificationService.getUserNotifications(resolveUserId(headerUserId));
         return ResponseEntity.ok(notifications);
     }
 
@@ -30,36 +32,40 @@ public class NotificationController {
     @PatchMapping("/notificaciones/{id}/leer")
     public ResponseEntity<Void> markAsRead(
             @PathVariable("id") UUID notificationId,
-            @RequestHeader("X-User-Id") UUID currentUserId
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId
     ) {
-        notificationService.markAsRead(notificationId, currentUserId);
+        notificationService.markAsRead(notificationId, resolveUserId(headerUserId));
         return ResponseEntity.noContent().build();
     }
 
     // 3. PATCH /api/notificaciones/leer-todas - Marca todas como leídas
     @PatchMapping("/notificaciones/leer-todas")
     public ResponseEntity<Void> markAllAsRead(
-            @RequestHeader("X-User-Id") UUID currentUserId
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId
     ) {
-        notificationService.markAllAsRead(currentUserId);
+        notificationService.markAllAsRead(resolveUserId(headerUserId));
         return ResponseEntity.noContent().build();
     }
 
     // 4. GET /api/notificaciones/no-leidas - Retorna conteo para el badge
     @GetMapping("/notificaciones/no-leidas")
     public ResponseEntity<Map<String, Long>> getUnreadCount(
-            @RequestHeader("X-User-Id") UUID currentUserId
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId
     ) {
-        long count = notificationService.getUnreadCount(currentUserId);
+        long count = notificationService.getUnreadCount(resolveUserId(headerUserId));
         return ResponseEntity.ok(Map.of("noLeidas", count));
     }
 
     // 5. GET /api/recordatorios - Retorna citas del propietario en las próximas 24h
     @GetMapping("/recordatorios")
     public ResponseEntity<List<Object>> getReminders(
-            @RequestHeader("X-User-Id") UUID currentUserId
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId
     ) {
-        List<Object> reminders = notificationService.getRemindersNext24Hours(currentUserId);
+        List<Object> reminders = notificationService.getRemindersNext24Hours(resolveUserId(headerUserId));
         return ResponseEntity.ok(reminders);
+    }
+
+    private UUID resolveUserId(UUID headerUserId) {
+        return headerUserId != null ? headerUserId : currentUserProvider.getCurrentUserId();
     }
 }
