@@ -91,6 +91,9 @@ public class SecurityConfig {
                 // Endpoints de citas comunes protegidos:
                 .requestMatchers("/api/citas/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
 
+                // Endpoints de mascotas e historial clínico protegidos:
+                .requestMatchers("/api/mascotas/**", "/api/pets/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
+
                 // Endpoints exclusivos de ADMIN:
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
