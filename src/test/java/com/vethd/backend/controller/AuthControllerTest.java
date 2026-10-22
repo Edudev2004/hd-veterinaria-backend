@@ -1,6 +1,7 @@
 package com.vethd.backend.controller;
 
 import com.vethd.backend.model.Owner;
+import com.vethd.backend.model.Role;
 import com.vethd.backend.model.User;
 import com.vethd.backend.repository.OwnerRepository;
 import com.vethd.backend.repository.RoleRepository;
@@ -19,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -59,6 +59,10 @@ public class AuthControllerTest {
             em.createNativeQuery("DELETE FROM " + tabla).executeUpdate();
         }
     }
+
+    // ==========================================
+    // US-01: Registro de propietario
+    // ==========================================
 
     @Test
     void shouldRegisterOwnerSuccessfullyAndReturn201WithJwt() throws Exception {
@@ -183,5 +187,144 @@ public class AuthControllerTest {
 
         Optional<User> userOpt = userRepository.findByDni("77665544");
         assertTrue(userOpt.isPresent());
+    }
+
+    // ==========================================
+    // US-02: Inicio de sesión (Login & JWT)
+    // ==========================================
+
+    @Test
+    void shouldLoginSuccessfullyAndReturn200WithJwt() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").description("Dueño").build());
+        User user = userRepository.save(User.builder()
+                .dni("11223344")
+                .firstName("Eduardo")
+                .lastName("Navarro")
+                .email("eduardo@example.com")
+                .passwordHash(passwordEncoder.encode("SecretPass123!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        ownerRepository.save(Owner.builder()
+                .user(user)
+                .phone("988776655")
+                .address("Calle Principal 100")
+                .build());
+
+        String loginJson = """
+                {
+                  "email": "eduardo@example.com",
+                  "password": "SecretPass123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString())
+                .andExpect(jsonPath("$.email").value("eduardo@example.com"))
+                .andExpect(jsonPath("$.nombre").value("Eduardo Navarro"))
+                .andExpect(jsonPath("$.rol").value("propietario"))
+                .andExpect(jsonPath("$.telefono").value("988776655"))
+                .andExpect(jsonPath("$.activo").value(true))
+                .andExpect(jsonPath("$.user.id").value(user.getId().toString()))
+                .andExpect(jsonPath("$.user.propietarioId").exists());
+    }
+
+    @Test
+    void shouldReturn401WhenPasswordIsIncorrect() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        userRepository.save(User.builder()
+                .dni("22334455")
+                .firstName("Ana")
+                .lastName("Torres")
+                .email("ana@example.com")
+                .passwordHash(passwordEncoder.encode("CorrectPassword1!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        String wrongPassJson = """
+                {
+                  "email": "ana@example.com",
+                  "password": "WrongPassword999!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(wrongPassJson))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturn401WhenUserDoesNotExist() throws Exception {
+        String nonExistentJson = """
+                {
+                  "email": "nonexistent@example.com",
+                  "password": "SomePassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(nonExistentJson))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturn403WhenAccountIsInactive() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        userRepository.save(User.builder()
+                .dni("33445566")
+                .firstName("Inactivo")
+                .lastName("Usuario")
+                .email("inactivo@example.com")
+                .passwordHash(passwordEncoder.encode("Pass123456!"))
+                .role(role)
+                .active(false)
+                .build());
+
+        String inactiveJson = """
+                {
+                  "email": "inactivo@example.com",
+                  "password": "Pass123456!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(inactiveJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldLoginWithSpanishFieldsCorreoAndContrasena() throws Exception {
+        Role role = roleRepository.save(Role.builder().name("ROLE_OWNER").build());
+        userRepository.save(User.builder()
+                .dni("44556677")
+                .firstName("Jorge")
+                .lastName("Rios")
+                .email("jorge@example.com")
+                .passwordHash(passwordEncoder.encode("JorgePass1!"))
+                .role(role)
+                .active(true)
+                .build());
+
+        String spanishJson = """
+                {
+                  "correo": "jorge@example.com",
+                  "contrasena": "JorgePass1!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(spanishJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString())
+                .andExpect(jsonPath("$.email").value("jorge@example.com"));
     }
 }
