@@ -1,12 +1,16 @@
 package com.vethd.backend;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+@Slf4j
 @SpringBootApplication
 public class BackendApplication {
 
@@ -15,7 +19,16 @@ public class BackendApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(BackendApplication.class, args);
+        ConfigurableApplicationContext context = SpringApplication.run(BackendApplication.class, args);
+        Environment env = context.getEnvironment();
+        String port = env.getProperty("server.port", "8081");
+
+        System.out.println("\n=======================================================");
+        System.out.println("  Backend de VetHD corriendo exitosamente!");
+        System.out.println("  URL Local: http://localhost:" + port);
+        System.out.println("=======================================================\n");
+
+        log.info("Backend de VetHD corriendo exitosamente en http://localhost:{}", port);
     }
 
     private static void loadDotenv() {
