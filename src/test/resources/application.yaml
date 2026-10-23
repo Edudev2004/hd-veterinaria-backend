@@ -15,7 +15,7 @@ spring:
       enabled: false
 
 jwt:
-  secret: vethd_default_secret_key_at_least_256_bits_long_for_security_2026!
+  secret: test_jwt_dummy_secret_key_for_unit_tests_only_at_least_256_bits_long!
   expiration: 86400000
 
 resend:
@@ -29,4 +29,5 @@ supabase:
 
 app:
   seed: false
+  frontend-url: http://localhost:3000
 

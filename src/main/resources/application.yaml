@@ -6,9 +6,9 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:aws-0-us-east-2.pooler.supabase.com}:${DB_PORT:5432}/${DB_NAME:postgres}?sslmode=require
-    username: ${DB_USER:postgres.dtcduueozztdwwuurfqu}
-    password: ${DB_PASSWORD:9r41mEl%Suyg24nIh4?o}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:postgres}?sslmode=require
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -25,7 +25,7 @@ spring:
     show-sql: false
 
 jwt:
-  secret: ${JWT_SECRET:vethd_default_secret_key_at_least_256_bits_long_for_security_2026!}
+  secret: ${JWT_SECRET:}
   expiration: ${JWT_EXPIRATION:86400000}
 
 resend:
@@ -33,6 +33,9 @@ resend:
   from: ${RESEND_FROM:VetHD <onboarding@resend.dev>}
 
 supabase:
-  url: ${SUPABASE_URL:https://dtcduueozztdwwuurfqu.supabase.co}
+  url: ${SUPABASE_URL:}
   key: ${SUPABASE_KEY:}
   bucket: ${SUPABASE_BUCKET:vethd-bucket}
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
