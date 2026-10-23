@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -61,7 +61,7 @@ class RoleAdminSecurityTest {
         );
 
         mockMvc.perform(
-                put("/api/admin/usuarios/"
+                patch("/api/admin/usuarios/"
                         + UUID.randomUUID() + "/rol")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -22,7 +22,7 @@ public class UserRoleAdminController {
     private final UserRoleService userRoleService;
 
     // Asignar o cambiar rol de un usuario
-    @PutMapping("/{id}/rol")
+    @PatchMapping("/{id}/rol")
     public ResponseEntity<UserRoleResponse> assignRole(
             @PathVariable UUID id,
             @Valid @RequestBody UserRoleRequest request
