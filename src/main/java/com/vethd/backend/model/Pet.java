@@ -4,11 +4,9 @@ import com.vethd.backend.util.GenderNormalizer;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 @Entity
 @Table(name = "pets")
 @Getter
@@ -17,21 +15,16 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Pet {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     private Owner owner;
-
     @Column(nullable = false, length = 100)
     private String name;
-
     @Column(nullable = false, length = 50)
     private String species;
-
     @Column(length = 50)
     private String breed;
 

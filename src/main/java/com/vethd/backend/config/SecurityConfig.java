@@ -42,12 +42,21 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,https://hd-veterinaria-frontend.vercel.app}")
+    private String allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        java.util.List<String> origins = java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .collect(java.util.stream.Collectors.toList());
+
+        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedOriginPatterns(java.util.List.of("*"));
+        configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(java.util.List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -90,6 +99,10 @@ public class SecurityConfig {
 
                 // Endpoints de citas comunes protegidos:
                 .requestMatchers("/api/citas/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
+                
+                // Endpoints exclusivos de PROPIETARIO y ADMIN
+                .requestMatchers("/api/propietarios/me", "/api/propietarios/me/**")
+                .hasAnyRole("PROPIETARIO", "ADMIN")
 
                 // Endpoints de mascotas e historial clínico protegidos:
                 .requestMatchers("/api/mascotas/**", "/api/pets/**").hasAnyRole("PROPIETARIO", "VETERINARIO", "ADMIN")
