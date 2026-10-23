@@ -2,6 +2,7 @@ package com.vethd.backend.services.impl;
 
 import com.vethd.backend.services.EmailService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,21 +19,31 @@ public class ResendEmailServiceImpl implements EmailService {
     private final RestClient restClient;
     private final String apiKey;
     private final String fromEmail;
+    private final String frontendUrl;
 
+    @Autowired
     public ResendEmailServiceImpl(
             @Value("${resend.api-key:}") String apiKey,
-            @Value("${resend.from:VetHD <onboarding@resend.dev>}") String fromEmail) {
+            @Value("${resend.from:VetHD <onboarding@resend.dev>}") String fromEmail,
+            @Value("${app.frontend-url:http://localhost:3000}") String frontendUrl) {
         this.apiKey = apiKey;
         this.fromEmail = fromEmail;
+        this.frontendUrl = (frontendUrl != null && !frontendUrl.isBlank())
+                ? (frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl)
+                : "http://localhost:3000";
         this.restClient = RestClient.builder()
                 .baseUrl("https://api.resend.com")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
 
+    public ResendEmailServiceImpl(String apiKey, String fromEmail) {
+        this(apiKey, fromEmail, "http://localhost:3000");
+    }
+
     @Override
     public void sendPasswordResetEmail(String toEmail, String resetToken) {
-        String resetUrl = "https://vethd.com/reset-password?token=" + resetToken;
+        String resetUrl = frontendUrl + "/restablecer-password?token=" + resetToken + "&email=" + toEmail;
 
         String htmlContent = """
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
