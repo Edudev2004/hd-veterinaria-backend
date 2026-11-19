@@ -34,7 +34,7 @@ long countAppointmentsBetween(
        "CONCAT(a.veterinarian.user.firstName, ' ', a.veterinarian.user.lastName) AS fullName, " +
        "COUNT(a) AS count " +
        "FROM Appointment a " +
-       "WHERE a.status = 'COMPLETADA' " +
+       "WHERE a.status = 'ATENDIDA' " +
        "GROUP BY a.veterinarian.id, a.veterinarian.user.firstName, a.veterinarian.user.lastName " +
        "ORDER BY COUNT(a) DESC")
 List<VeterinarioCitasCount> findRankingVeterinariosAtendidos();
