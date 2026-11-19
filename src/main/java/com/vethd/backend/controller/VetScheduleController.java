@@ -1,6 +1,8 @@
 package com.vethd.backend.controller;
 
 import com.vethd.backend.DTOs.response.AppointmentResponse;
+import com.vethd.backend.DTOs.response.VeterinarianResponse;
+import com.vethd.backend.mapper.VeterinarianMapper;
 import com.vethd.backend.model.Veterinarian;
 import com.vethd.backend.repository.VeterinarianRepository;
 import com.vethd.backend.services.CurrentUserProvider;
@@ -35,6 +37,14 @@ public class VetScheduleController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
     ) {
         return vetScheduleService.getAgendaDiaria(resolveCurrentVeterinarianId(), fecha);
+    }
+
+    @GetMapping("/api/veterinarios/me")
+    public VeterinarianResponse getPerfilVeterinario() {
+        UUID currentUserId = currentUserProvider.getCurrentUserId();
+        Veterinarian veterinarian = veterinarianRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinario no encontrado"));
+        return VeterinarianMapper.toResponse(veterinarian);
     }
 
     private UUID resolveCurrentVeterinarianId() {
