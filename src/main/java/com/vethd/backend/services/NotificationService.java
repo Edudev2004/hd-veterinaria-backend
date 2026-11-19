@@ -1,6 +1,7 @@
 package com.vethd.backend.services;
 
 import com.vethd.backend.DTOs.response.NotificationResponse;
+import com.vethd.backend.DTOs.response.AppointmentResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,5 +16,5 @@ public interface NotificationService {
 
     long getUnreadCount(UUID userId);
 
-    List<Object> getRemindersNext24Hours(UUID ownerId);
+    List<AppointmentResponse> getRemindersNext24Hours(UUID ownerId);
 }
