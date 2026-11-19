@@ -4,7 +4,10 @@ import com.vethd.backend.DTOs.request.AppointmentNotAttendedRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
 import com.vethd.backend.mapper.AppointmentMapper;
 import com.vethd.backend.model.Appointment;
+import com.vethd.backend.model.Notification;
+import com.vethd.backend.model.User;
 import com.vethd.backend.repository.AppointmentRepository;
+import com.vethd.backend.repository.NotificationRepository;
 import com.vethd.backend.services.AppointmentStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,6 +21,7 @@ import java.util.UUID;
 public class AppointmentStatusServiceImpl implements AppointmentStatusService {
 
     private final AppointmentRepository appointmentRepository;
+    private final NotificationRepository notificationRepository;
 
     private Appointment buscarYValidar(UUID appointmentId, UUID veterinarianId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -37,6 +41,11 @@ public class AppointmentStatusServiceImpl implements AppointmentStatusService {
         Appointment appointment = buscarYValidar(appointmentId, veterinarianId);
         appointment.setStatus("ATENDIDA");
         Appointment guardado = appointmentRepository.save(appointment);
+
+        notificarPropietario(guardado, "Atención completada",
+                "La atención de \"" + guardado.getPet().getName() + "\" fue registrada. Ya puedes valorarla.",
+                "CITA_ATENDIDA");
+
         return AppointmentMapper.toResponse(guardado);
     }
 
@@ -47,6 +56,32 @@ public class AppointmentStatusServiceImpl implements AppointmentStatusService {
         appointment.setStatus("NO_ATENDIDA");
         appointment.setCancellationReason(request.reason());
         Appointment guardado = appointmentRepository.save(appointment);
+
+        notificarPropietario(guardado, "Cita no atendida",
+                "La cita de \"" + guardado.getPet().getName() + "\" fue marcada como no atendida.",
+                "CITA_NO_ATENDIDA");
+
         return AppointmentMapper.toResponse(guardado);
+    }
+
+    private void notificarPropietario(Appointment appointment, String title,
+                                     String message, String type) {
+        User ownerUser = appointment.getPet().getOwner().getUser();
+
+        if (ownerUser == null) {
+            return;
+        }
+
+        Notification notification = Notification.builder()
+                .user(ownerUser)
+                .appointment(appointment)
+                .title(title)
+                .message(message)
+                .type(type)
+                .scheduledAt(appointment.getScheduledAt())
+                .read(false)
+                .build();
+
+        notificationRepository.save(notification);
     }
 }
