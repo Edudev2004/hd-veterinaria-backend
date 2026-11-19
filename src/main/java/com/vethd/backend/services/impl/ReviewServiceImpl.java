@@ -3,6 +3,7 @@ package com.vethd.backend.services.impl;
 import com.vethd.backend.DTOs.request.ReviewRequest;
 import com.vethd.backend.DTOs.response.ReviewResponse;
 import com.vethd.backend.DTOs.response.VeterinarianReviewsResponse;
+import com.vethd.backend.mapper.ReviewMapper;
 import com.vethd.backend.model.Review;
 import com.vethd.backend.model.Appointment;
 import com.vethd.backend.repository.AppointmentRepository;
@@ -60,12 +61,7 @@ public class ReviewServiceImpl implements ReviewService {
 
         Review savedReview = reviewRepository.save(review);
 
-        return ReviewResponse.builder()
-                .id(savedReview.getId())
-                .rating(savedReview.getRating())
-                .comment(savedReview.getComment())
-                .createdAt(savedReview.getCreatedAt())
-                .build();
+        return ReviewMapper.toResponse(savedReview);
     }
 
     @Override
@@ -76,14 +72,9 @@ public class ReviewServiceImpl implements ReviewService {
 
         List<Review> reviews = reviewRepository.findByVeterinarianId(veterinarianId);
 
-        List<ReviewResponse> reviewResponses = reviews.stream().map(r ->
-            ReviewResponse.builder()
-                    .id(r.getId())
-                    .rating(r.getRating())
-                    .comment(r.getComment())
-                    .createdAt(r.getCreatedAt())
-                    .build()
-        ).collect(Collectors.toList());
+        List<ReviewResponse> reviewResponses = reviews.stream()
+                .map(ReviewMapper::toResponse)
+                .collect(Collectors.toList());
 
         return VeterinarianReviewsResponse.builder()
                 .promedio(average)
