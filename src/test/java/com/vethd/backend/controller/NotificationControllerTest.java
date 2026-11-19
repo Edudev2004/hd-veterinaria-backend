@@ -7,6 +7,7 @@ import com.vethd.backend.model.Role;
 import com.vethd.backend.model.Specialty;
 import com.vethd.backend.model.User;
 import com.vethd.backend.model.Veterinarian;
+import com.vethd.backend.services.JwtService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,12 +26,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc(addFilters = true)
 @Transactional
 class NotificationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JwtService jwtService;
 
     @PersistenceContext
     private EntityManager em;
@@ -62,13 +66,16 @@ class NotificationControllerTest {
         LocalDateTime now = LocalDateTime.now().withNano(0);
         Appointment reminder = createAppointment(ownerPet, veterinarian, specialty, now.plusHours(1), "PENDIENTE");
         createAppointment(ownerPet, veterinarian, specialty, now.plusHours(2), "CANCELADA");
+        createAppointment(ownerPet, veterinarian, specialty, now.plusHours(3), "COMPLETADA");
         createAppointment(ownerPet, veterinarian, specialty, now.plusHours(25), "PENDIENTE");
         createAppointment(anotherOwnerPet, veterinarian, specialty, now.plusHours(2), "PENDIENTE");
         em.flush();
 
-        UUID ownerUserId = ownerPet.getOwner().getUser().getId();
+        User owner = ownerPet.getOwner().getUser();
+        String token = jwtService.generateToken(owner.getId(), owner.getEmail(), "ROLE_OWNER");
         mockMvc.perform(get("/api/recordatorios")
-                        .header(USER_HEADER, ownerUserId.toString()))
+                        .header("Authorization", "Bearer " + token)
+                        .header(USER_HEADER, anotherOwnerPet.getOwner().getUser().getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(reminder.getId().toString()))

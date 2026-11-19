@@ -62,7 +62,7 @@ List<VeterinarioCitasCount> findRankingVeterinariosAtendidos();
             JOIN FETCH a.specialty
             WHERE ou.id = :userId
               AND a.scheduledAt BETWEEN :from AND :to
-              AND a.status NOT IN ('CANCELADA', 'ATENDIDA', 'NO_ATENDIDA')
+              AND a.status NOT IN ('CANCELADA', 'ATENDIDA', 'NO_ATENDIDA', 'COMPLETADA')
             ORDER BY a.scheduledAt ASC
             """)
     List<Appointment> findUpcomingOwnerAppointments(

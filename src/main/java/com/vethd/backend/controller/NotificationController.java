@@ -2,7 +2,7 @@ package com.vethd.backend.controller;
 
 import com.vethd.backend.DTOs.response.NotificationResponse;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
-import com.vethd.backend.services.CurrentUserProvider;
+import com.vethd.backend.services.AuthenticatedUserProvider;
 import com.vethd.backend.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ import java.util.UUID;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final CurrentUserProvider currentUserProvider;
+    private final AuthenticatedUserProvider currentUserProvider;
 
     // 1. GET /api/notificaciones - Retorna notificaciones del usuario en sesión
     @GetMapping("/notificaciones")
