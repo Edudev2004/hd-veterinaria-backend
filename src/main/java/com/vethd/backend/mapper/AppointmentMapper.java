@@ -3,6 +3,7 @@ package com.vethd.backend.mapper;
 import com.vethd.backend.DTOs.request.AppointmentRequest;
 import com.vethd.backend.DTOs.request.AppointmentRescheduledRequest;
 import com.vethd.backend.DTOs.response.AppointmentResponse;
+import com.vethd.backend.DTOs.response.OwnerResponse;
 import com.vethd.backend.DTOs.response.SpecialtyResponse;
 import com.vethd.backend.model.*;
 
@@ -44,6 +45,7 @@ public class AppointmentMapper {
         return AppointmentResponse.builder()
                 .id(appointment.getId())
                 .pet(PetMapper.toResponse(appointment.getPet()))
+                .owner(toOwnerResponse(appointment.getPet()))
                 .veterinarian(VeterinarianMapper.toResponse(appointment.getVeterinarian()))
                 .specialty(toSpecialtyResponse(appointment.getSpecialty()))
                 .scheduledAt(appointment.getScheduledAt())
@@ -53,6 +55,13 @@ public class AppointmentMapper {
                 .createdAt(appointment.getCreatedAt())
                 .diagnosis(diagnosis != null ? DiagnosisMapper.toResponse(diagnosis) : null)
                 .build();
+    }
+
+    private static OwnerResponse toOwnerResponse(Pet pet) {
+        if (pet == null || pet.getOwner() == null || pet.getOwner().getUser() == null) {
+            return null;
+        }
+        return OwnerMapper.toResponse(pet.getOwner());
     }
 
     private static SpecialtyResponse toSpecialtyResponse(Specialty specialty) {

@@ -6,6 +6,7 @@ import com.vethd.backend.repository.AppointmentRepository;
 import com.vethd.backend.services.VetScheduleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class VetScheduleServiceImpl implements VetScheduleService {
     private final AppointmentRepository appointmentRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<AppointmentResponse> getAgendaDiaria(UUID veterinarianId, LocalDate fecha) {
         LocalDateTime desde = LocalDateTime.of(fecha, LocalTime.MIN);
         LocalDateTime hasta = LocalDateTime.of(fecha, LocalTime.MAX);

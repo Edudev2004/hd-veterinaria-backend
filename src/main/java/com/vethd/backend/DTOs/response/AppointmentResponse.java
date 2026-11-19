@@ -9,6 +9,7 @@ import java.util.UUID;
 public record AppointmentResponse(
         UUID id,
         PetResponse pet,
+        OwnerResponse owner,
         VeterinarianResponse veterinarian,
         SpecialtyResponse specialty,
         LocalDateTime scheduledAt,
