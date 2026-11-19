@@ -108,10 +108,20 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Veterinarian targetVeterinarian = resolveTargetVeterinarian(request, appointment);
+        Veterinarian previousVeterinarian = appointment.getVeterinarian();
 
         validateWorkingHour(request.newHour());
 
         LocalDateTime scheduledAt = LocalDateTime.of(request.newDate(), request.newHour());
+
+        // Idempotencia: si la cita ya tiene la misma fecha, hora y veterinario, se evita reprocesar y duplicar notificaciones
+        if (appointment.getScheduledAt() != null
+                && appointment.getScheduledAt().isEqual(scheduledAt)
+                && previousVeterinarian != null
+                && previousVeterinarian.getId().equals(targetVeterinarian.getId())) {
+            return AppointmentMapper.toResponse(appointment);
+        }
+
         validateFutureDateTime(scheduledAt);
         validateSlotIsFree(targetVeterinarian.getId(), scheduledAt, appointment.getId());
 
@@ -126,6 +136,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         notifyUser(targetVeterinarian.getUser(), saved, "Cita reprogramada",
                 "La cita con \"" + petName + "\" fue reprogramada para el " + cuando + ".",
                 "CITA_REPROGRAMADA");
+
+        // Si se reasignó a un veterinario distinto, notificar al veterinario anterior
+        if (previousVeterinarian != null && !previousVeterinarian.getId().equals(targetVeterinarian.getId())) {
+            notifyUser(previousVeterinarian.getUser(), saved, "Cita reasignada",
+                    "La cita con \"" + petName + "\" fue reasignada a otro profesional.",
+                    "CITA_REPROGRAMADA");
+        }
 
         return AppointmentMapper.toResponse(saved);
     }
