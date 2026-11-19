@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -39,8 +40,10 @@ public class AppointmentControllerTest {
     private EntityManager em;
 
     private static final String USER_HEADER = "X-User-Id";
-    private static final String FUTURE_DATE = "2026-11-15";
-    private static final String PAST_DATE = "2026-01-15";
+    // Fechas relativas a hoy: con fechas fijas el test caduca cuando la "fecha futura" pasa.
+    private static final LocalDate FUTURE_DAY = LocalDate.now().plusMonths(1);
+    private static final String FUTURE_DATE = FUTURE_DAY.toString();
+    private static final String PAST_DATE = LocalDate.now().minusMonths(1).toString();
     private static final String REASON = "limping after walk";
 
     private static final String[] TABLAS = {
@@ -96,7 +99,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldReturn409WhenSlotIsAlreadyBooked() throws Exception {
         setupScenario();
-        createAppointment(pet, vet, cardio, LocalDateTime.of(2026, 11, 15, 10, 0));
+        createAppointment(pet, vet, cardio, FUTURE_DAY.atTime(10, 0));
         em.flush();
 
         mockMvc.perform(post("/api/citas")
@@ -215,7 +218,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldRescheduleAppointmentToNewSlot() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
                         .header(USER_HEADER, ownerId.toString())
@@ -234,7 +237,7 @@ public class AppointmentControllerTest {
         em.flush();
         Veterinarian newVet = createVeterinarian(
                 createUser(vetRole, "70000011", "Luis", "Soto", "luis@test.com"), derma);
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
                         .header(USER_HEADER, ownerId.toString())
@@ -248,7 +251,7 @@ public class AppointmentControllerTest {
         setupScenario();
         Veterinarian newVet = createVeterinarian(
                 createUser(vetRole, "70000012", "Luis", "Soto", "luis2@test.com"), cardio);
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
                         .header(USER_HEADER, ownerId.toString())
@@ -261,7 +264,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldRescheduleToSameSlotWithoutConflict() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
                         .header(USER_HEADER, ownerId.toString())
@@ -274,8 +277,8 @@ public class AppointmentControllerTest {
     @Test
     void shouldReturn409WhenNewSlotIsAlreadyBooked() throws Exception {
         setupScenario();
-        createAppointment(pet, vet, cardio, LocalDateTime.of(2026, 11, 15, 10, 0));
-        Appointment appointmentToMove = pendingAppointment(LocalDateTime.of(2026, 11, 15, 15, 0));
+        createAppointment(pet, vet, cardio, FUTURE_DAY.atTime(10, 0));
+        Appointment appointmentToMove = pendingAppointment(FUTURE_DAY.atTime(15, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointmentToMove.getId() + "/reprogramar")
                         .header(USER_HEADER, ownerId.toString())
@@ -287,7 +290,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldReturn400WhenReschedulingNonPendingAppointment() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
         appointment.setStatus("CANCELADA");
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
@@ -302,7 +305,7 @@ public class AppointmentControllerTest {
         setupScenario();
         UUID intruderId = createPet(ownerRole, "70000004", "otro-dueno2@test.com")
                 .getOwner().getUser().getId();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/reprogramar")
                         .header(USER_HEADER, intruderId.toString())
@@ -318,7 +321,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldCancelAppointmentWithReason() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
                         .header(USER_HEADER, ownerId.toString())
@@ -335,7 +338,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldReturn400WhenCancellingNonPendingAppointment() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
         appointment.setStatus("ATENDIDA");
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
@@ -348,7 +351,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldReturn400WhenCancellationReasonIsBlank() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
                         .header(USER_HEADER, ownerId.toString())
@@ -362,7 +365,7 @@ public class AppointmentControllerTest {
         setupScenario();
         UUID intruderId = createPet(ownerRole, "70000005", "otro-dueno3@test.com")
                 .getOwner().getUser().getId();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + appointment.getId() + "/cancelar")
                         .header(USER_HEADER, intruderId.toString())
@@ -374,7 +377,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldBookSlotAgainAfterCancellation() throws Exception {
         setupScenario();
-        Appointment first = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment first = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(patch("/api/citas/" + first.getId() + "/cancelar")
                         .header(USER_HEADER, ownerId.toString())
@@ -397,8 +400,8 @@ public class AppointmentControllerTest {
     @Test
     void shouldListMyAppointmentsForOwner() throws Exception {
         setupScenario();
-        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
-        Appointment a2 = pendingAppointment(LocalDateTime.of(2026, 11, 16, 11, 0));
+        Appointment a1 = pendingAppointment(FUTURE_DAY.atTime(10, 0));
+        Appointment a2 = pendingAppointment(FUTURE_DAY.plusDays(1).atTime(11, 0));
 
         mockMvc.perform(get("/api/citas")
                         .header(USER_HEADER, ownerId.toString()))
@@ -413,8 +416,8 @@ public class AppointmentControllerTest {
     @Test
     void shouldFilterMyAppointmentsByStatus() throws Exception {
         setupScenario();
-        Appointment pending = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
-        Appointment cancelled = pendingAppointment(LocalDateTime.of(2026, 11, 16, 11, 0));
+        Appointment pending = pendingAppointment(FUTURE_DAY.atTime(10, 0));
+        Appointment cancelled = pendingAppointment(FUTURE_DAY.plusDays(1).atTime(11, 0));
         cancelled.setStatus("CANCELADA");
         cancelled.setCancellationReason("Dueño ocupado");
         em.flush();
@@ -449,7 +452,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldFilterMyAppointmentsByPetId() throws Exception {
         setupScenario();
-        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment a1 = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         // Segunda mascota del mismo dueño
         Pet pet2 = Pet.builder()
@@ -461,7 +464,7 @@ public class AppointmentControllerTest {
                 .active(true)
                 .build();
         em.persist(pet2);
-        Appointment a2 = createAppointment(pet2, vet, cardio, LocalDateTime.of(2026, 11, 16, 11, 0));
+        Appointment a2 = createAppointment(pet2, vet, cardio, FUTURE_DAY.plusDays(1).atTime(11, 0));
         em.flush();
 
         mockMvc.perform(get("/api/citas")
@@ -476,7 +479,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldFilterMyAppointmentsBySearchTerm() throws Exception {
         setupScenario();
-        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment a1 = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(get("/api/citas")
                         .header(USER_HEADER, ownerId.toString())
@@ -495,7 +498,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldGetAppointmentsViaAliasEndpoint() throws Exception {
         setupScenario();
-        Appointment a1 = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment a1 = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(get("/api/citas/mis-citas")
                         .header(USER_HEADER, ownerId.toString()))
@@ -507,7 +510,7 @@ public class AppointmentControllerTest {
     @Test
     void shouldGetAppointmentDetailsById() throws Exception {
         setupScenario();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(get("/api/citas/" + appointment.getId())
                         .header(USER_HEADER, ownerId.toString()))
@@ -536,7 +539,7 @@ public class AppointmentControllerTest {
         setupScenario();
         UUID intruderId = createPet(ownerRole, "70000008", "otro-dueno-detalle@test.com")
                 .getOwner().getUser().getId();
-        Appointment appointment = pendingAppointment(LocalDateTime.of(2026, 11, 15, 10, 0));
+        Appointment appointment = pendingAppointment(FUTURE_DAY.atTime(10, 0));
 
         mockMvc.perform(get("/api/citas/" + appointment.getId())
                         .header(USER_HEADER, intruderId.toString()))
