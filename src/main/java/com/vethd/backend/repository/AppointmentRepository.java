@@ -51,6 +51,26 @@ List<VeterinarioCitasCount> findRankingVeterinariosAtendidos();
             String status
     );
 
+    @Query("""
+            SELECT DISTINCT a FROM Appointment a
+            JOIN FETCH a.pet p
+            JOIN FETCH p.owner o
+            JOIN FETCH o.user ou
+            JOIN FETCH a.veterinarian v
+            JOIN FETCH v.user vu
+            LEFT JOIN FETCH v.specialties
+            JOIN FETCH a.specialty
+            WHERE ou.id = :userId
+              AND a.scheduledAt BETWEEN :from AND :to
+              AND a.status NOT IN ('CANCELADA', 'ATENDIDA', 'NO_ATENDIDA', 'COMPLETADA')
+            ORDER BY a.scheduledAt ASC
+            """)
+    List<Appointment> findUpcomingOwnerAppointments(
+            @Param("userId") UUID userId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
     boolean existsByVeterinarian_IdAndScheduledAtAndStatus(
             UUID veterinarianId,
             LocalDateTime scheduledAt,
