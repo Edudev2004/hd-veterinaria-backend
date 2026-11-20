@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -17,4 +19,7 @@ public class CitasReporteResponse {
     private LocalDate fechaFin;
     private long totalCitas;
     private Map<String, Long> desglosePorEstado;
+
+    @Builder.Default
+    private List<CitaReporteDetalleDTO> detalleCitas = new ArrayList<>();
 }

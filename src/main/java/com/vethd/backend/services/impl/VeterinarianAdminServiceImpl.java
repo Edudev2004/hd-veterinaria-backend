@@ -40,7 +40,7 @@ public class VeterinarianAdminServiceImpl implements VeterinarianAdminService {
     @Override
     @Transactional(readOnly = true)
     public Page<AdminVeterinarianResponse> listar(String nombre, String estado, Pageable pageable) {
-        String filtroNombre = (nombre != null && !nombre.trim().isEmpty()) ? nombre.trim() : null;
+        String filtroNombre = (nombre != null && !nombre.trim().isEmpty()) ? "%" + nombre.trim().toLowerCase() + "%" : null;
         Boolean filtroEstado = null;
         if (estado != null && !estado.trim().isEmpty()) {
             if (estado.equalsIgnoreCase("ACTIVO") || estado.equalsIgnoreCase("true")) {

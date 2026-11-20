@@ -134,6 +134,23 @@ List<VeterinarioCitasCount> findRankingVeterinariosAtendidos();
             JOIN FETCH v.user vu
             LEFT JOIN FETCH v.specialties
             JOIN FETCH a.specialty
+            WHERE a.scheduledAt BETWEEN :start AND :end
+            ORDER BY a.scheduledAt DESC
+            """)
+    List<Appointment> findWithDetailsBetweenOrderByScheduledAtDesc(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+            SELECT DISTINCT a FROM Appointment a
+            JOIN FETCH a.pet p
+            JOIN FETCH p.owner o
+            JOIN FETCH o.user ou
+            JOIN FETCH a.veterinarian v
+            JOIN FETCH v.user vu
+            LEFT JOIN FETCH v.specialties
+            JOIN FETCH a.specialty
             WHERE a.id = :id
             """)
     Optional<Appointment> findByIdWithDetails(@Param("id") UUID id);
