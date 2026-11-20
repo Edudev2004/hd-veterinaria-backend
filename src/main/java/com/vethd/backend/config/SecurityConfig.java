@@ -53,8 +53,7 @@ public class SecurityConfig {
                 .filter(origin -> !origin.isEmpty())
                 .collect(java.util.stream.Collectors.toList());
 
-        configuration.setAllowedOrigins(origins);
-        configuration.setAllowedOriginPatterns(java.util.List.of("*"));
+        configuration.setAllowedOriginPatterns(origins.isEmpty() ? java.util.List.of("*") : origins);
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("*"));
         configuration.setAllowCredentials(true);
