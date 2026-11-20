@@ -1,5 +1,6 @@
 package com.vethd.backend.controller;
 
+import com.vethd.backend.DTOs.response.report.ArchivoReporteDTO;
 import com.vethd.backend.DTOs.response.report.CitasReporteResponse;
 import com.vethd.backend.DTOs.response.report.DashboardEstadisticasResponse;
 import com.vethd.backend.DTOs.response.report.MascotasEspecieResponse;
@@ -174,5 +175,50 @@ class AdminReportControllerTest {
         mockMvc.perform(get("/api/admin/estadisticas")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/reportes/citas/excel con ADMIN debe retornar archivo .xlsx con 200")
+    void testDescargarExcelCitas_Admin() throws Exception {
+        simularSesionAdmin();
+
+        ArchivoReporteDTO archivo = new ArchivoReporteDTO("reporte_citas.xlsx", new byte[]{1, 2, 3});
+        when(adminReportService.generarExcelCitas(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(archivo);
+
+        mockMvc.perform(get("/api/admin/reportes/citas/excel")
+                        .param("fechaInicio", "2026-01-01")
+                        .param("fechaFin", "2026-01-31"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"reporte_citas.xlsx\""))
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/reportes/veterinarios/excel con ADMIN debe retornar archivo .xlsx con 200")
+    void testDescargarExcelVeterinarios_Admin() throws Exception {
+        simularSesionAdmin();
+
+        ArchivoReporteDTO archivo = new ArchivoReporteDTO("ranking_veterinarios.xlsx", new byte[]{1, 2, 3});
+        when(adminReportService.generarExcelVeterinarios()).thenReturn(archivo);
+
+        mockMvc.perform(get("/api/admin/reportes/veterinarios/excel"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"ranking_veterinarios.xlsx\""))
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/reportes/mascotas/excel con ADMIN debe retornar archivo .xlsx con 200")
+    void testDescargarExcelMascotas_Admin() throws Exception {
+        simularSesionAdmin();
+
+        ArchivoReporteDTO archivo = new ArchivoReporteDTO("reporte_mascotas.xlsx", new byte[]{1, 2, 3});
+        when(adminReportService.generarExcelMascotas()).thenReturn(archivo);
+
+        mockMvc.perform(get("/api/admin/reportes/mascotas/excel"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"reporte_mascotas.xlsx\""))
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
     }
 }
