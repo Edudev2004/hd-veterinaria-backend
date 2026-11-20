@@ -43,6 +43,15 @@ class AdminReportServiceImplTest {
     @Mock
     private OwnerRepository ownerRepository;
 
+    @Mock
+    private com.vethd.backend.report.CitaExcelGenerator citaExcelGenerator;
+
+    @Mock
+    private com.vethd.backend.report.VeterinarioExcelGenerator veterinarioExcelGenerator;
+
+    @Mock
+    private com.vethd.backend.report.MascotaExcelGenerator mascotaExcelGenerator;
+
     @InjectMocks
     private AdminReportServiceImpl adminReportService;
 
