@@ -47,15 +47,15 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID
             SELECT DISTINCT v FROM Veterinarian v
             JOIN FETCH v.user u
             LEFT JOIN FETCH v.specialties
-            WHERE (:nombre IS NULL OR 
-                   LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :nombre, '%')))
+            WHERE (CAST(:nombre AS string) IS NULL OR 
+                   LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE CAST(:nombre AS string))
               AND (:active IS NULL OR v.active = :active)
             """,
             countQuery = """
             SELECT COUNT(v) FROM Veterinarian v
             JOIN v.user u
-            WHERE (:nombre IS NULL OR 
-                   LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :nombre, '%')))
+            WHERE (CAST(:nombre AS string) IS NULL OR 
+                   LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE CAST(:nombre AS string))
               AND (:active IS NULL OR v.active = :active)
             """)
     Page<Veterinarian> listarConFiltros(
