@@ -88,7 +88,7 @@ public class SecurityConfig {
                 .requestMatchers("/error", "/h2-console/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                 // Subrutas protegidas de veterinarios (e.g. agenda personal del veterinario):
-                .requestMatchers("/api/veterinarios/me/**").hasAnyRole("VETERINARIO", "ADMIN")
+                .requestMatchers("/api/veterinarios/me", "/api/veterinarios/me/**").hasAnyRole("VETERINARIO", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/veterinarios/**").permitAll()
 
                 // Endpoints exclusivos de rol VETERINARIO (y ADMIN):

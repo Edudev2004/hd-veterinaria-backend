@@ -34,7 +34,7 @@ long countAppointmentsBetween(
        "CONCAT(a.veterinarian.user.firstName, ' ', a.veterinarian.user.lastName) AS fullName, " +
        "COUNT(a) AS count " +
        "FROM Appointment a " +
-       "WHERE a.status = 'COMPLETADA' " +
+       "WHERE a.status = 'ATENDIDA' " +
        "GROUP BY a.veterinarian.id, a.veterinarian.user.firstName, a.veterinarian.user.lastName " +
        "ORDER BY COUNT(a) DESC")
 List<VeterinarioCitasCount> findRankingVeterinariosAtendidos();
@@ -49,6 +49,26 @@ List<VeterinarioCitasCount> findRankingVeterinariosAtendidos();
             LocalDateTime from,
             LocalDateTime to,
             String status
+    );
+
+    @Query("""
+            SELECT DISTINCT a FROM Appointment a
+            JOIN FETCH a.pet p
+            JOIN FETCH p.owner o
+            JOIN FETCH o.user ou
+            JOIN FETCH a.veterinarian v
+            JOIN FETCH v.user vu
+            LEFT JOIN FETCH v.specialties
+            JOIN FETCH a.specialty
+            WHERE ou.id = :userId
+              AND a.scheduledAt BETWEEN :from AND :to
+              AND a.status NOT IN ('CANCELADA', 'ATENDIDA', 'NO_ATENDIDA', 'COMPLETADA')
+            ORDER BY a.scheduledAt ASC
+            """)
+    List<Appointment> findUpcomingOwnerAppointments(
+            @Param("userId") UUID userId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
     );
 
     boolean existsByVeterinarian_IdAndScheduledAtAndStatus(

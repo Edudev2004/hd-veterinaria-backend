@@ -82,7 +82,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     public DashboardEstadisticasResponse obtenerEstadisticasDashboard() {
         long totalClientes = ownerRepository.count();
         long totalVetsActivos = veterinarianRepository.countByActiveTrue();
-        long totalMascotas = petRepository.count();
+        long totalMascotas = petRepository.countByActiveTrue();
         long totalCitas = appointmentRepository.count();
 
         return DashboardEstadisticasResponse.builder()

@@ -1,7 +1,10 @@
 package com.vethd.backend.services.impl;
 
 import com.vethd.backend.DTOs.response.NotificationResponse;
+import com.vethd.backend.DTOs.response.AppointmentResponse;
+import com.vethd.backend.mapper.AppointmentMapper;
 import com.vethd.backend.model.Notification;
+import com.vethd.backend.repository.AppointmentRepository;
 import com.vethd.backend.repository.NotificationRepository;
 import com.vethd.backend.services.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -13,12 +16,14 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final AppointmentRepository appointmentRepository;
 
     // 1. Obtener todas las notificaciones del usuario en sesión
     @Override
@@ -61,9 +66,12 @@ public class NotificationServiceImpl implements NotificationService {
     // 5. Recordatorios de las próximas 24h
     @Override
     @Transactional(readOnly = true)
-    public List<Object> getRemindersNext24Hours(UUID ownerId) {
-        // Lógica base o integración con citas cuando esté lista
-        return List.of();
+    public List<AppointmentResponse> getRemindersNext24Hours(UUID ownerId) {
+        LocalDateTime now = LocalDateTime.now();
+        return appointmentRepository.findUpcomingOwnerAppointments(ownerId, now, now.plusHours(24))
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     private NotificationResponse mapToResponse(Notification n) {

@@ -8,8 +8,12 @@ import java.util.UUID;
 @Builder
 public record ReviewResponse(
         UUID id,
+        UUID appointmentId,
         Short rating,
         String comment,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String petName,
+        String petPhotoUrl,
+        String ownerName
 ) {
 }
