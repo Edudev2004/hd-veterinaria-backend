@@ -220,9 +220,11 @@ public class AppointmentServiceImpl implements AppointmentService {
                 "ROLE_ADMIN".equalsIgnoreCase(roleName);
 
         List<Appointment> appointments;
-        if (isOwner) {
+        if (isAdmin) {
+            appointments = appointmentRepository.findAllWithDetailsOrderByScheduledAtDesc();
+        } else if (isOwner) {
             appointments = appointmentRepository.findByPetOwnerUserIdOrderByScheduledAtDesc(currentUserId);
-        } else if (isVet && !isAdmin) {
+        } else if (isVet) {
             appointments = appointmentRepository.findByVeterinarianUserIdOrderByScheduledAtDesc(currentUserId);
         } else {
             appointments = appointmentRepository.findAllWithDetailsOrderByScheduledAtDesc();

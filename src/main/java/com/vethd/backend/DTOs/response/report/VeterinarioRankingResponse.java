@@ -15,4 +15,7 @@ public class VeterinarioRankingResponse {
     private UUID veterinarianId;
     private String nombreCompleto;
     private long citasAtendidas;
+    private String email;
+    private String especialidad;
+    private Boolean activo;
 }
