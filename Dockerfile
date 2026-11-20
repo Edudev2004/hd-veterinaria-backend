@@ -14,4 +14,4 @@ WORKDIR /app
 COPY --from=build /app/target/backend-*.jar app.jar
 
 
-ENTRYPOINT ["java", "-Xmx320m", "-Xss512k", "-XX:+UseSerialGC", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
