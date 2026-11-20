@@ -77,6 +77,7 @@ public class DataInitializer implements CommandLineRunner {
         } else {
             User userProp = userRepository.findByEmail(emailProp).get();
             userProp.setPasswordHash(passwordEncoder.encode("12345678"));
+            userProp.setActive(true);
             userRepository.save(userProp);
         }
 
@@ -103,7 +104,12 @@ public class DataInitializer implements CommandLineRunner {
         } else {
             User userVet = userRepository.findByEmail(emailVet).get();
             userVet.setPasswordHash(passwordEncoder.encode("12345678"));
+            userVet.setActive(true);
             userRepository.save(userVet);
+            veterinarianRepository.findByUserId(userVet.getId()).ifPresent(vet -> {
+                vet.setActive(true);
+                veterinarianRepository.save(vet);
+            });
         }
 
         // 3. Admin demo solicitado
@@ -123,6 +129,7 @@ public class DataInitializer implements CommandLineRunner {
         } else {
             User userAdmin = userRepository.findByEmail(emailAdmin).get();
             userAdmin.setPasswordHash(passwordEncoder.encode("12345678"));
+            userAdmin.setActive(true);
             userRepository.save(userAdmin);
         }
 
