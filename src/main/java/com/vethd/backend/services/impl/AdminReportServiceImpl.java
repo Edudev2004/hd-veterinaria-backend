@@ -1,12 +1,17 @@
 package com.vethd.backend.services.impl;
 
+import com.vethd.backend.DTOs.response.report.ArchivoReporteDTO;
 import com.vethd.backend.DTOs.response.report.CitaReporteDetalleDTO;
 import com.vethd.backend.DTOs.response.report.CitasReporteResponse;
 import com.vethd.backend.DTOs.response.report.DashboardEstadisticasResponse;
 import com.vethd.backend.DTOs.response.report.MascotasEspecieResponse;
 import com.vethd.backend.DTOs.response.report.VeterinarioRankingResponse;
 import com.vethd.backend.model.Appointment;
+import com.vethd.backend.model.Pet;
 import com.vethd.backend.model.Veterinarian;
+import com.vethd.backend.report.CitaExcelGenerator;
+import com.vethd.backend.report.MascotaExcelGenerator;
+import com.vethd.backend.report.VeterinarioExcelGenerator;
 import com.vethd.backend.repository.AppointmentRepository;
 import com.vethd.backend.repository.OwnerRepository;
 import com.vethd.backend.repository.PetRepository;
@@ -38,6 +43,9 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final PetRepository petRepository;
     private final VeterinarianRepository veterinarianRepository;
     private final OwnerRepository ownerRepository;
+    private final CitaExcelGenerator citaExcelGenerator;
+    private final VeterinarioExcelGenerator veterinarioExcelGenerator;
+    private final MascotaExcelGenerator mascotaExcelGenerator;
 
     @Override
     public CitasReporteResponse obtenerReporteCitas(LocalDate fechaInicio, LocalDate fechaFin) {
@@ -169,5 +177,28 @@ public class AdminReportServiceImpl implements AdminReportService {
                 .totalMascotas(totalMascotas)
                 .totalCitas(totalCitas)
                 .build();
+    }
+
+    @Override
+    public ArchivoReporteDTO generarExcelCitas(LocalDate fechaInicio, LocalDate fechaFin) {
+        CitasReporteResponse reporte = obtenerReporteCitas(fechaInicio, fechaFin);
+        byte[] contenido = citaExcelGenerator.generar(reporte);
+        String nombre = String.format("reporte-citas_%s_%s.xlsx", fechaInicio, fechaFin);
+        return new ArchivoReporteDTO(nombre, contenido);
+    }
+
+    @Override
+    public ArchivoReporteDTO generarExcelVeterinarios() {
+        List<VeterinarioRankingResponse> ranking = obtenerRankingVeterinarios();
+        byte[] contenido = veterinarioExcelGenerator.generar(ranking);
+        return new ArchivoReporteDTO("ranking-veterinarios.xlsx", contenido);
+    }
+
+    @Override
+    public ArchivoReporteDTO generarExcelMascotas() {
+        List<MascotasEspecieResponse> especies = obtenerReporteMascotasPorEspecie();
+        List<Pet> pacientes = petRepository.findAll();
+        byte[] contenido = mascotaExcelGenerator.generar(especies, pacientes);
+        return new ArchivoReporteDTO("mascotas-por-especie.xlsx", contenido);
     }
 }

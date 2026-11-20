@@ -1,5 +1,6 @@
 package com.vethd.backend.controller;
 
+import com.vethd.backend.DTOs.response.report.ArchivoReporteDTO;
 import com.vethd.backend.DTOs.response.report.CitasReporteResponse;
 import com.vethd.backend.DTOs.response.report.DashboardEstadisticasResponse;
 import com.vethd.backend.DTOs.response.report.MascotasEspecieResponse;
@@ -10,7 +11,10 @@ import com.vethd.backend.services.AdminReportService;
 import com.vethd.backend.services.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +30,8 @@ import java.util.UUID;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class AdminReportController {
+
+    private static final String MEDIA_TYPE_EXCEL = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final AdminReportService adminReportService;
     private final CurrentUserProvider currentUserProvider;
@@ -71,5 +77,40 @@ public class AdminReportController {
     public ResponseEntity<DashboardEstadisticasResponse> getEstadisticasDashboard() {
         validarRolAdmin();
         return ResponseEntity.ok(adminReportService.obtenerEstadisticasDashboard());
+    }
+
+    @GetMapping(value = "/reportes/citas/excel", produces = MEDIA_TYPE_EXCEL)
+    public ResponseEntity<byte[]> descargarExcelCitas(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin
+    ) {
+        validarRolAdmin();
+        return construirDescarga(adminReportService.generarExcelCitas(fechaInicio, fechaFin));
+    }
+
+    @GetMapping(value = "/reportes/veterinarios/excel", produces = MEDIA_TYPE_EXCEL)
+    public ResponseEntity<byte[]> descargarExcelVeterinarios() {
+        validarRolAdmin();
+        return construirDescarga(adminReportService.generarExcelVeterinarios());
+    }
+
+    @GetMapping(value = "/reportes/mascotas/excel", produces = MEDIA_TYPE_EXCEL)
+    public ResponseEntity<byte[]> descargarExcelMascotas() {
+        validarRolAdmin();
+        return construirDescarga(adminReportService.generarExcelMascotas());
+    }
+
+    private ResponseEntity<byte[]> construirDescarga(ArchivoReporteDTO archivo) {
+        ContentDisposition disposicion = ContentDisposition.attachment()
+                .filename(archivo.getNombreArchivo())
+                .build();
+
+        HttpHeaders cabeceras = new HttpHeaders();
+        cabeceras.setContentType(MediaType.parseMediaType(MEDIA_TYPE_EXCEL));
+        cabeceras.setContentDisposition(disposicion);
+
+        return ResponseEntity.ok()
+                .headers(cabeceras)
+                .body(archivo.getContenido());
     }
 }

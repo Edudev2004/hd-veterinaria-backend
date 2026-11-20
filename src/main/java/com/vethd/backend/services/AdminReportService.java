@@ -1,5 +1,6 @@
 package com.vethd.backend.services;
 
+import com.vethd.backend.DTOs.response.report.ArchivoReporteDTO;
 import com.vethd.backend.DTOs.response.report.CitasReporteResponse;
 import com.vethd.backend.DTOs.response.report.DashboardEstadisticasResponse;
 import com.vethd.backend.DTOs.response.report.MascotasEspecieResponse;
@@ -13,4 +14,8 @@ public interface AdminReportService {
     List<VeterinarioRankingResponse> obtenerRankingVeterinarios();
     List<MascotasEspecieResponse> obtenerReporteMascotasPorEspecie();
     DashboardEstadisticasResponse obtenerEstadisticasDashboard();
+
+    ArchivoReporteDTO generarExcelCitas(LocalDate fechaInicio, LocalDate fechaFin);
+    ArchivoReporteDTO generarExcelVeterinarios();
+    ArchivoReporteDTO generarExcelMascotas();
 }
